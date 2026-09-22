@@ -494,6 +494,8 @@ class MainWindow(QMainWindow):
         self.generate_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)
         elapsed = time.time() - self.job_started
+        if _event.get("failed"):
+            return          # il messaggio l'ha gia' scritto on_failed
         if _event.get("cancelled"):
             self.status_label.setText("Generazione annullata.")
         else:

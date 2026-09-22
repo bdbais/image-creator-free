@@ -148,6 +148,7 @@ class Engine:
             except OSError as exc:
                 emit("error", id=job,
                      msg="Immagine di riferimento non leggibile: %s (%s)" % (path, exc))
+                emit("done", id=job, failed=True)
                 return
 
         seed = req.get("seed")
@@ -192,9 +193,11 @@ class Engine:
                 emit("error", id=job, kind="oom", msg=(
                     "VRAM esaurita. Riduci la risoluzione o scegli una modalità di memoria "
                     "più conservativa nelle impostazioni."))
+                emit("done", id=job, failed=True)
                 return
             except Exception as exc:  # noqa: BLE001 - riportiamo tutto alla GUI
                 emit("error", id=job, msg=str(exc), trace=traceback.format_exc())
+                emit("done", id=job, failed=True)
                 return
 
             image = result.images[0]
