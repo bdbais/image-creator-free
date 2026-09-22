@@ -199,8 +199,16 @@ class SetupDialog(QDialog):
                 "Su questo disco restano %s GB: non bastano per il modello. "
                 "Scegline un altro." % free)
             self.model_disk.setStyleSheet("color: #f87171;")
+            return
+        media = config.drive_media_type(target)
+        if media == "HDD":
+            self.model_disk.setText(
+                "Spazio libero: %s GB. Attenzione: è un disco meccanico, e il modello "
+                "viene riletto a ogni avvio: su SSD si carica in minuti, qui in ore." % free)
+            self.model_disk.setStyleSheet("color: #fbbf24;")
         else:
-            self.model_disk.setText("Spazio libero: %s GB" % free)
+            self.model_disk.setText("Spazio libero: %s GB%s" % (
+                free, " (SSD)" if media == "SSD" else ""))
             self.model_disk.setStyleSheet("")
 
     def start_install(self):

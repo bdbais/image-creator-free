@@ -11,6 +11,7 @@ from pathlib import Path
 from .. import APP_NAME, MODEL_ID
 
 IS_FROZEN = getattr(sys, "frozen", False)
+NO_WINDOW_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def app_dir() -> Path:
@@ -206,6 +207,32 @@ def suggest_memory_mode(vram_gb: float) -> str:
 MODEL_SIZE_GB = 33.0
 
 
+def drive_media_type(path: Path) -> str:
+    """"SSD", "HDD" o "" se non si riesce a stabilirlo.
+
+    Il modello pesa 33 GB e viene riletto a ogni caricamento: su un disco
+    meccanico il solo caricamento richiede ore, quindi vale la pena avvisare
+    prima che l'utente scelga dove metterlo.
+    """
+    drive = str(Path(path).anchor).rstrip("\/")
+    if not drive:
+        return ""
+    script = (
+        "$p = Get-Partition -DriveLetter %s -ErrorAction Stop;"
+        "$d = Get-PhysicalDisk | Where-Object DeviceId -eq "
+        "(Get-Disk -Number $p.DiskNumber).Number;"
+        "Write-Output $d.MediaType" % drive[0]
+    )
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, timeout=25, creationflags=NO_WINDOW_FLAG)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    value = (out.stdout or "").strip().upper()
+    return value if value in ("SSD", "HDD") else ""
+
+
 def is_fixed_drive(drive: Path) -> bool:
     """Solo dischi interni: niente chiavette, unita' di rete o dischi ottici."""
     try:
@@ -232,15 +259,20 @@ def best_models_dir() -> str:
     if free_disk_gb(default) >= MODEL_SIZE_GB + 8:
         return ""
 
-    best, best_free = "", 0.0
+    candidati = []
     for letter in "DEFGHIJKLMNOPQRSTUVWXYZC":
         drive = Path("%s:\\" % letter)
         if not drive.exists() or not is_fixed_drive(drive):
             continue
         free = free_disk_gb(drive)
-        if free > best_free:
-            best, best_free = str(drive / "ImageCreatorFree" / "modelli"), free
-    return best if best_free >= MODEL_SIZE_GB + 8 else ""
+        if free >= MODEL_SIZE_GB + 8:
+            # A parita' di spazio un SSD vale molto di piu': il modello viene
+            # riletto per intero a ogni caricamento.
+            candidati.append((drive_media_type(drive) == "SSD", free, drive))
+    if not candidati:
+        return ""
+    _, _, drive = max(candidati)
+    return str(drive / "ImageCreatorFree" / "modelli")
 
 
 def free_disk_gb(path: Path) -> float:
