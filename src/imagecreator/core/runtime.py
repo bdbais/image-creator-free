@@ -40,6 +40,7 @@ BASE_PACKAGES = [
     "safetensors",
     "pillow",
     "huggingface_hub>=0.30",
+    "hf_transfer",
     "sentencepiece",
     "protobuf",
     "einops",
@@ -261,6 +262,9 @@ def verify(log: Log | None = None) -> dict:
         "try:\n"
         "    import transformers;info['transformers']=transformers.__version__\n"
         "except Exception as e: info['transformers_error']=str(e)\n"
+        "try:\n"
+        "    import hf_transfer;info['hf_transfer']=True\n"
+        "except Exception: info['hf_transfer']=False\n"
         "print(json.dumps(info))\n"
     )
     try:

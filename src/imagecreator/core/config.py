@@ -158,6 +158,9 @@ class Settings:
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONUTF8"] = "1"
         env["HF_HUB_DISABLE_TELEMETRY"] = "1"
+        # Download in parallelo: i 33 GB del modello sono la parte piu' lenta
+        # del primo avvio. Il worker la disattiva da se' se la libreria manca.
+        env["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
         return env
 
 

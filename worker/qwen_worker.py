@@ -312,6 +312,13 @@ def main():
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except AttributeError:
         pass
+    if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER") == "1":
+        try:
+            import hf_transfer  # noqa: F401
+        except ImportError:
+            # Senza la libreria, huggingface_hub si rifiuterebbe di partire.
+            os.environ.pop("HF_HUB_ENABLE_HF_TRANSFER", None)
+
     engine = Engine()
     emit("hello", pid=os.getpid(), python=sys.version.split()[0], model=MODEL_ID)
 
