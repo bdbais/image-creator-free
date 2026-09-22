@@ -4,7 +4,7 @@ Genera immagini con **[Qwen-Image-2.1](https://huggingface.co/Qwen/Qwen-Image-2.
 computer: scrivi il prompt, premi Genera, l'immagine resta sul tuo disco. Nessun account,
 nessun abbonamento, nessuna immagine che esce da casa tua.
 
-Sito del progetto: **https://imagecreator.bais.info**
+Sito del progetto: **https://imagecreator.bais.info** · [Manuale](docs/MANUALE.md)
 
 ![Schermata di Image Creator Free](docs/img/schermata.png)
 
