@@ -1,0 +1,21 @@
+Image Creator Free
+Built with Qwen.
+
+This program is an interface for the Qwen-Image-2.1 model. It does NOT
+redistribute the model: the weights are downloaded by the user from
+https://huggingface.co/Qwen/Qwen-Image-2.1 at first use.
+
+Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT,
+Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd.
+All Rights Reserved.
+
+The Qwen Research License allows use of the model for NON-COMMERCIAL purposes
+(research and evaluation) only. A commercial license must be requested from
+Hangzhou Tongyi Laboratory (model-business@notice.qwencloud.com).
+
+The source code of Image Creator Free itself is licensed under the MIT license
+(see LICENSE) and is Copyright (c) 2026 Federico Bellizia.
+
+Third-party components installed at runtime, each under its own license:
+  PySide6 (LGPL-3.0), PyTorch (BSD-3-Clause), diffusers (Apache-2.0),
+  transformers (Apache-2.0), accelerate (Apache-2.0), Pillow (MIT-CMU).

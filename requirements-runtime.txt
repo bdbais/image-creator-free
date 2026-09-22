@@ -1,0 +1,9 @@
+# Stack installato automaticamente nel runtime separato (vedi src/imagecreator/core/runtime.py)
+torch
+torchvision
+transformers>=5.17
+accelerate>=1.0
+diffusers @ git+https://github.com/huggingface/diffusers
+safetensors
+pillow
+huggingface_hub>=0.30

@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+build/
+dist/
+installer/Output/
+*.spec.bak
+.idea/
+.vscode/
+site/node_modules/
+site/.wrangler/

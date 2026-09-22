@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installa le dipendenze
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Il tag corrisponde alla versione del codice
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $init = Get-Content src/imagecreator/__init__.py -Raw
+          if ($init -notmatch '__version__\s*=\s*"([^"]+)"') { throw "versione non trovata" }
+          $version = $Matches[1]
+          $tag = "${{ github.ref_name }}".TrimStart("v")
+          if ($version -ne $tag) { throw "tag $tag diverso da __version__ $version" }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Test
+        run: python -m unittest discover -s tests -v
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+
+      - name: Build
+        shell: pwsh
+        run: .\build.ps1 -SkipTests
+
+      - name: Prova di installazione silenziosa
+        shell: pwsh
+        run: |
+          $setup = "installer\Output\ImageCreatorFree-Setup.exe"
+          Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait
+          $exe = "$env:LOCALAPPDATA\Programs\Image Creator Free\ImageCreatorFree.exe"
+          if (-not (Test-Path $exe)) { $exe = "$env:ProgramFiles\Image Creator Free\ImageCreatorFree.exe" }
+          if (-not (Test-Path $exe)) { throw "eseguibile non installato" }
+          & $exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw "self test fallito dopo l'installazione" }
+          $uninst = Get-ChildItem (Split-Path $exe) -Filter "unins*.exe" | Select-Object -First 1
+          Start-Process $uninst.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-creator-free
+          path: |
+            dist/ImageCreatorFree-portable.exe
+            dist/SHA256SUMS.txt
+            installer/Output/ImageCreatorFree-Setup.exe
+
+      - name: Pubblica la release
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = "release-notes.md"
+          $lines = Get-Content CHANGELOG.md
+          $start = ($lines | Select-String -Pattern "^## $env:VERSION" | Select-Object -First 1).LineNumber
+          if ($start) {
+            $rest = $lines[$start..($lines.Count - 1)]
+            $end = ($rest | Select-String -Pattern "^## " | Select-Object -First 1).LineNumber
+            if ($end) { $rest = $rest[0..($end - 2)] }
+            $rest | Set-Content $notes -Encoding utf8
+          } else {
+            "Versione $env:VERSION" | Set-Content $notes -Encoding utf8
+          }
+          gh release create "${{ github.ref_name }}" `
+            "installer/Output/ImageCreatorFree-Setup.exe" `
+            "dist/ImageCreatorFree-portable.exe" `
+            "dist/SHA256SUMS.txt" `
+            --title "Image Creator Free $env:VERSION" --notes-file $notes
