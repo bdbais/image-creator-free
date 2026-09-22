@@ -16,6 +16,7 @@ import sys
 import threading
 import time
 import traceback
+from queue import Queue
 
 MODEL_ID = os.environ.get("ICF_MODEL_ID", "Qwen/Qwen-Image-2.1")
 
@@ -175,8 +176,8 @@ class Engine:
                 kwargs["width"] = int(req.get("width", 1024))
                 kwargs["height"] = int(req.get("height", 1024))
 
-            kwargs = _filter_kwargs(self.pipe, kwargs)
             kwargs["callback_on_step_end"] = _make_callback(job, index, batch, steps)
+            kwargs = _filter_kwargs(self.pipe, kwargs)
 
             started = time.time()
             emit("progress", id=job, index=index, batch=batch, step=0, total=steps,
@@ -267,6 +268,44 @@ def _try(fn):
         return False
 
 
+def _incoming():
+    """Comandi in arrivo, letti da un thread a parte.
+
+    Durante una generazione il thread principale e' dentro la pipeline e non
+    puo' leggere stdin: senza questo lettore separato, "annulla" arriverebbe
+    solo a lavoro finito. Cancel e shutdown agiscono subito sui flag; gli altri
+    comandi aspettano il loro turno in coda.
+    """
+    queue = Queue()
+
+    def reader():
+        for raw in sys.stdin:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                req = json.loads(raw)
+            except ValueError:
+                emit("error", msg="Comando non valido: %s" % raw[:200])
+                continue
+            if req.get("cmd") == "cancel":
+                _cancel.set()
+                continue
+            if req.get("cmd") == "shutdown":
+                _cancel.set()   # una generazione in corso si ferma al passo successivo
+            queue.put(req)
+        queue.put(None)
+
+    thread = threading.Thread(target=reader, daemon=True)
+    thread.start()
+
+    while True:
+        req = queue.get()
+        if req is None:
+            return
+        yield req
+
+
 def main():
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -276,16 +315,7 @@ def main():
     engine = Engine()
     emit("hello", pid=os.getpid(), python=sys.version.split()[0], model=MODEL_ID)
 
-    for raw in sys.stdin:
-        raw = raw.strip()
-        if not raw:
-            continue
-        try:
-            req = json.loads(raw)
-        except ValueError:
-            emit("error", msg="Comando non valido: %s" % raw[:200])
-            continue
-
+    for req in _incoming():
         cmd = req.get("cmd")
         try:
             if cmd == "load":
@@ -293,8 +323,6 @@ def main():
             elif cmd == "generate":
                 _cancel.clear()
                 engine.generate(req)
-            elif cmd == "cancel":
-                _cancel.set()
             elif cmd == "probe":
                 emit("probe", **engine.probe())
             elif cmd == "shutdown":

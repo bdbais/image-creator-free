@@ -8,11 +8,13 @@ import json
 import os
 import subprocess
 import sys
+import time
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKER = ROOT / "worker" / "qwen_worker.py"
+sys.path.insert(0, str(ROOT / "worker"))
 
 
 def talk(commands, timeout=180):
@@ -79,6 +81,41 @@ class TestProtocollo(unittest.TestCase):
                         % [e["ev"] for e in events])
         self.assertTrue(errors[0]["msg"])
         self.assertEqual(events[-1]["ev"], "bye")
+
+
+    def test_cancel_arriva_mentre_il_worker_e_occupato(self):
+        """Il lettore di stdin gira a parte: cancel deve agire subito, non a fine lavoro."""
+        import threading
+        import qwen_worker
+
+        commands = []
+        received = threading.Event()
+
+        def fake_stdin():
+            yield json.dumps({"cmd": "probe"}) + "\n"
+            yield json.dumps({"cmd": "cancel"}) + "\n"
+            received.wait(5)
+            yield json.dumps({"cmd": "shutdown"}) + "\n"
+
+        original = qwen_worker.sys.stdin
+        qwen_worker.sys.stdin = fake_stdin()
+        qwen_worker._cancel.clear()
+        try:
+            stream = qwen_worker._incoming()
+            commands.append(next(stream))          # probe
+            # Il cancel non entra in coda: alza subito il flag.
+            for _ in range(50):
+                if qwen_worker._cancel.is_set():
+                    break
+                time.sleep(0.02)
+            self.assertTrue(qwen_worker._cancel.is_set(),
+                            "cancel non ha alzato il flag mentre il worker era occupato")
+            received.set()
+            commands.append(next(stream))          # shutdown
+        finally:
+            qwen_worker.sys.stdin = original
+            qwen_worker._cancel.clear()
+        self.assertEqual([c["cmd"] for c in commands], ["probe", "shutdown"])
 
 
 if __name__ == "__main__":
