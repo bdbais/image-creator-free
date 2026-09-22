@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QFrame, QHBoxLayout, QLabel, QPlainTextEdit, QProgressBar,
-    QPushButton, QStackedWidget, QVBoxLayout, QWidget,
+    QCheckBox, QDialog, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QPlainTextEdit, QProgressBar, QPushButton, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from ..core import config, runtime
@@ -94,16 +94,33 @@ class SetupDialog(QDialog):
         gpu_label.setWordWrap(True)
         grid.addWidget(gpu_label)
 
-        disk = QLabel("Spazio libero su %s: %s GB (ne servono circa 36)" % (
+        disk = QLabel("Spazio libero su %s: %s GB (l'ambiente di calcolo ne chiede 3)" % (
             config.data_dir().drive or "disco", free))
         disk.setWordWrap(True)
-        if free and free < 40:
+        if free and free < 8:
             disk.setStyleSheet("color: #fbbf24;")
         grid.addWidget(disk)
 
         python = runtime.find_system_python()
         grid.addWidget(QLabel("Python di sistema: %s" % (
             python if python else "assente - ne scarico una copia dedicata")))
+
+        grid.addWidget(QLabel(""))
+        grid.addWidget(QLabel("<b>Dove tenere il modello (circa 33 GB)</b>"))
+        self.models_edit = QLineEdit(
+            self.settings.models_dir or config.best_models_dir())
+        self.models_edit.setPlaceholderText(str(config.default_hf_home()))
+        self.models_edit.textChanged.connect(self._update_model_disk)
+        browse = QPushButton("Sfoglia...")
+        browse.clicked.connect(self._pick_models_dir)
+        row = QHBoxLayout()
+        row.addWidget(self.models_edit, 1)
+        row.addWidget(browse)
+        grid.addLayout(row)
+        self.model_disk = QLabel("")
+        self.model_disk.setWordWrap(True)
+        grid.addWidget(self.model_disk)
+        self._update_model_disk()
         box.addWidget(card)
 
         licence = QLabel(LICENSE_TEXT)
@@ -166,8 +183,29 @@ class SetupDialog(QDialog):
         return page
 
     # ------------------------------------------------------------------ azioni
+    def _pick_models_dir(self):
+        path = QFileDialog.getExistingDirectory(
+            self, "Dove tenere i file del modello", self.models_edit.text())
+        if path:
+            self.models_edit.setText(path)
+
+    def _update_model_disk(self):
+        from pathlib import Path
+
+        target = Path(self.models_edit.text().strip() or str(config.default_hf_home()))
+        free = config.free_disk_gb(target)
+        if free and free < config.MODEL_SIZE_GB + 3:
+            self.model_disk.setText(
+                "Su questo disco restano %s GB: non bastano per il modello. "
+                "Scegline un altro." % free)
+            self.model_disk.setStyleSheet("color: #f87171;")
+        else:
+            self.model_disk.setText("Spazio libero: %s GB" % free)
+            self.model_disk.setStyleSheet("")
+
     def start_install(self):
         self.settings.accepted_license = True
+        self.settings.models_dir = self.models_edit.text().strip()
         self.settings.save()
         self.stack.setCurrentIndex(1)
 

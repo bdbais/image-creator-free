@@ -32,8 +32,12 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config.QUALITY["high"]["steps"], 40)
 
     def test_modalita_memoria_suggerita(self):
-        self.assertEqual(config.suggest_memory_mode(24), "high")
-        self.assertEqual(config.suggest_memory_mode(12), "balanced")
+        # Il modello pesa 33 GB in bf16 e il suo modulo piu' grande 17,5:
+        # una scheda da 12 o 16 GB deve finire in offload sequenziale.
+        self.assertEqual(config.suggest_memory_mode(48), "high")
+        self.assertEqual(config.suggest_memory_mode(24), "balanced")
+        self.assertEqual(config.suggest_memory_mode(16), "low")
+        self.assertEqual(config.suggest_memory_mode(12), "low")
         self.assertEqual(config.suggest_memory_mode(8), "low")
 
     def test_impostazioni_salvate_e_rilette(self):
@@ -136,11 +140,11 @@ class TestWorkerPuro(unittest.TestCase):
 
     def test_modalita_memoria_automatica(self):
         engine = self.worker.Engine()
-        engine.vram_gb = 24
+        engine.vram_gb = 48
         self.assertEqual(engine._resolve_mode("auto"), "high")
-        engine.vram_gb = 12
+        engine.vram_gb = 24
         self.assertEqual(engine._resolve_mode("auto"), "balanced")
-        engine.vram_gb = 6
+        engine.vram_gb = 12
         self.assertEqual(engine._resolve_mode("auto"), "low")
         self.assertEqual(engine._resolve_mode("high"), "high")
 

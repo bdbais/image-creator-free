@@ -179,11 +179,51 @@ def detect_gpu() -> dict:
 
 
 def suggest_memory_mode(vram_gb: float) -> str:
-    if vram_gb >= 23:
+    if vram_gb >= 40:
         return "high"
-    if vram_gb >= 11:
+    if vram_gb >= 20:
         return "balanced"
     return "low"
+
+
+MODEL_SIZE_GB = 33.0
+
+
+def is_fixed_drive(drive: Path) -> bool:
+    """Solo dischi interni: niente chiavette, unita' di rete o dischi ottici."""
+    try:
+        import ctypes
+
+        return ctypes.windll.kernel32.GetDriveTypeW(str(drive)) == 3  # DRIVE_FIXED
+    except (AttributeError, OSError):
+        return True
+
+
+def default_hf_home() -> Path:
+    home = os.environ.get("HF_HOME")
+    return Path(home) if home else Path.home() / ".cache" / "huggingface"
+
+
+def best_models_dir() -> str:
+    """Dove proporre di tenere i 33 GB del modello.
+
+    Se il disco della cache di Hugging Face non ha spazio a sufficienza cerca
+    il disco fisso piu' capiente: sui portatili il disco di sistema e' spesso
+    piccolo, e un download interrotto a meta' e' la delusione peggiore.
+    """
+    default = default_hf_home()
+    if free_disk_gb(default) >= MODEL_SIZE_GB + 8:
+        return ""
+
+    best, best_free = "", 0.0
+    for letter in "DEFGHIJKLMNOPQRSTUVWXYZC":
+        drive = Path("%s:\\" % letter)
+        if not drive.exists() or not is_fixed_drive(drive):
+            continue
+        free = free_disk_gb(drive)
+        if free > best_free:
+            best, best_free = str(drive / "ImageCreatorFree" / "modelli"), free
+    return best if best_free >= MODEL_SIZE_GB + 8 else ""
 
 
 def free_disk_gb(path: Path) -> float:

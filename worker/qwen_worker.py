@@ -61,11 +61,10 @@ class Engine:
     def _resolve_mode(self, requested):
         if requested != "auto":
             return requested
-        if not self.vram_gb:
-            return "low"
-        if self.vram_gb >= 23:
+        # Vedi la nota in core/config.py: il modulo piu' grande pesa 17,5 GB.
+        if self.vram_gb >= 40:
             return "high"
-        if self.vram_gb >= 11:
+        if self.vram_gb >= 20:
             return "balanced"
         return "low"
 
