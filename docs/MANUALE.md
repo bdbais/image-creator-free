@@ -69,6 +69,13 @@ ne occupa 17,5 da solo. Per questo:
 In automatico il programma sceglie da sé. Se vedi *VRAM esaurita*, scendi di
 qualità o imposta a mano l'offload sequenziale in *File → Impostazioni*.
 
+**Quanto ci vuole.** Con l'offload sequenziale il collo di bottiglia non è la
+scheda video ma il viavai dei pesi fra RAM e VRAM: su una RTX 4070 da 12 GB il
+primo caricamento del modello richiede circa tre quarti d'ora e ogni passo di
+diffusione parecchi minuti, quindi una immagine è questione di ore. Da 20 GB di
+VRAM in su si passa all'offload dei moduli e i tempi scendono di un ordine di
+grandezza. Tienine conto prima di lanciare un gruppo di otto immagini.
+
 ## Dove finiscono le cose
 
 | Cosa | Dove |
