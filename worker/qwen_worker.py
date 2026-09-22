@@ -279,7 +279,13 @@ def _incoming():
     queue = Queue()
 
     def reader():
-        for raw in sys.stdin:
+        # readline() esplicita: la GUI tiene stdin aperto per tutta la sessione
+        # e i comandi devono essere consegnati uno alla volta, senza aspettare
+        # che chi scrive chiuda il canale.
+        while True:
+            raw = sys.stdin.readline()
+            if not raw:
+                break
             raw = raw.strip()
             if not raw:
                 continue

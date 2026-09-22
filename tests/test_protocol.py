@@ -86,36 +86,81 @@ class TestProtocollo(unittest.TestCase):
     def test_cancel_arriva_mentre_il_worker_e_occupato(self):
         """Il lettore di stdin gira a parte: cancel deve agire subito, non a fine lavoro."""
         import threading
+
         import qwen_worker
 
-        commands = []
-        received = threading.Event()
+        class FintoStdin:
+            """stdin finto: la terza riga arriva solo quando il test lo consente."""
 
-        def fake_stdin():
-            yield json.dumps({"cmd": "probe"}) + "\n"
-            yield json.dumps({"cmd": "cancel"}) + "\n"
-            received.wait(5)
-            yield json.dumps({"cmd": "shutdown"}) + "\n"
+            def __init__(self, sbloccato):
+                self.righe = [json.dumps({"cmd": "probe"}) + "\n",
+                              json.dumps({"cmd": "cancel"}) + "\n"]
+                self.coda = json.dumps({"cmd": "shutdown"}) + "\n"
+                self.sbloccato = sbloccato
 
-        original = qwen_worker.sys.stdin
-        qwen_worker.sys.stdin = fake_stdin()
+            def readline(self):
+                if self.righe:
+                    return self.righe.pop(0)
+                self.sbloccato.wait(10)
+                riga, self.coda = self.coda, ""
+                return riga
+
+        sbloccato = threading.Event()
+        originale = qwen_worker.sys.stdin
+        qwen_worker.sys.stdin = FintoStdin(sbloccato)
         qwen_worker._cancel.clear()
+        ricevuti = []
         try:
             stream = qwen_worker._incoming()
-            commands.append(next(stream))          # probe
-            # Il cancel non entra in coda: alza subito il flag.
-            for _ in range(50):
+            ricevuti.append(next(stream))                 # probe
+            for _ in range(100):                          # il cancel non entra in coda
                 if qwen_worker._cancel.is_set():
                     break
                 time.sleep(0.02)
             self.assertTrue(qwen_worker._cancel.is_set(),
                             "cancel non ha alzato il flag mentre il worker era occupato")
-            received.set()
-            commands.append(next(stream))          # shutdown
+            sbloccato.set()
+            ricevuti.append(next(stream))                 # shutdown
         finally:
-            qwen_worker.sys.stdin = original
+            sbloccato.set()
+            qwen_worker.sys.stdin = originale
             qwen_worker._cancel.clear()
-        self.assertEqual([c["cmd"] for c in commands], ["probe", "shutdown"])
+        self.assertEqual([c["cmd"] for c in ricevuti], ["probe", "shutdown"])
+
+    def test_comandi_con_stdin_aperto(self):
+        """Caso della GUI: chi scrive non chiude stdin e aspetta la risposta.
+
+        Con "for line in sys.stdin" i comandi restavano nel buffer del lettore
+        e il processo sembrava bloccato appena dopo l'handshake.
+        """
+        env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONUTF8="1")
+        proc = subprocess.Popen(
+            [sys.executable, "-u", str(WORKER)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, encoding="utf-8", bufsize=1, env=env)
+        try:
+            proc.stdin.write(json.dumps({"cmd": "banana"}) + "\n")
+            proc.stdin.flush()
+            deadline = time.time() + 30
+            seen = []
+            while time.time() < deadline:
+                line = proc.stdout.readline()
+                if not line:
+                    break
+                if line.startswith("{"):
+                    seen.append(json.loads(line))
+                    if seen[-1]["ev"] == "error":
+                        break
+            self.assertTrue(any(e["ev"] == "error" for e in seen),
+                            "nessuna risposta mentre stdin resta aperto: %s"
+                            % [e["ev"] for e in seen])
+        finally:
+            try:
+                proc.stdin.write(json.dumps({"cmd": "shutdown"}) + "\n")
+                proc.stdin.flush()
+                proc.wait(timeout=20)
+            except Exception:
+                proc.kill()
 
 
 if __name__ == "__main__":
