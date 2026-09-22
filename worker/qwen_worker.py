@@ -215,8 +215,9 @@ class Engine:
             emit("image", id=job, index=index, path=path, seed=run_seed,
                  elapsed=round(time.time() - started, 1), meta=meta)
 
+        cancelled = _cancel.is_set()
         _cancel.clear()
-        emit("done", id=job)
+        emit("done", id=job, cancelled=cancelled)
 
 
 def _save_png(image, path, meta):

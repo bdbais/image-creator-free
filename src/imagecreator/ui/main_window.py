@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
         self.job_started = 0.0
         self.pending = 0
         self.log_lines: deque[str] = deque(maxlen=3000)
+        self.seen_progress = False
         self.log_dialog = None
 
         self.setWindowTitle("%s - Qwen-Image-2.1 in locale" % APP_NAME)
@@ -235,14 +236,15 @@ class MainWindow(QMainWindow):
 
         self.aspect_box = QComboBox()
         self.aspect_box.addItems(list(config.ASPECT_RATIOS))
-        self.aspect_box.setCurrentText(self.settings.aspect)
+        if self.settings.aspect in config.ASPECT_RATIOS:
+            self.aspect_box.setCurrentText(self.settings.aspect)
         self.aspect_box.currentTextChanged.connect(self._update_size_label)
 
         self.quality_box = QComboBox()
         for key, data in config.QUALITY.items():
             self.quality_box.addItem(data["label"], key)
-        self.quality_box.setCurrentIndex(
-            max(0, list(config.QUALITY).index(self.settings.quality)))
+        index = self.quality_box.findData(self.settings.quality)
+        self.quality_box.setCurrentIndex(index if index >= 0 else 1)
         self.quality_box.currentIndexChanged.connect(self._update_size_label)
 
         self.batch_spin = QSpinBox()
@@ -437,6 +439,7 @@ class MainWindow(QMainWindow):
             "basename": time.strftime("%Y%m%d-%H%M%S"),
         }
         self.pending = self.batch_spin.value()
+        self.seen_progress = False
         self.job_started = time.time()
         self.current_job = self.client.generate(request)
         if not self.current_job:
@@ -450,7 +453,12 @@ class MainWindow(QMainWindow):
 
     def cancel(self):
         self.client.cancel()
-        self.status_label.setText("Annullamento richiesto: si ferma al passo successivo.")
+        self.cancel_btn.setEnabled(False)
+        self.generate_btn.setEnabled(True)
+        self.bar.setVisible(False)
+        self.status_label.setText(
+            "Annullamento richiesto: se il modello si sta caricando, si ferma appena "
+            "comincia a generare.")
 
     # ---------------------------------------------------------------- eventi
     def on_loaded(self, event: dict):
@@ -459,6 +467,7 @@ class MainWindow(QMainWindow):
             self.status_label.setText("Modello caricato.")
 
     def on_progress(self, event: dict):
+        self.seen_progress = True
         total = int(event.get("total") or 0)
         step = int(event.get("step") or 0)
         if total:
@@ -485,7 +494,10 @@ class MainWindow(QMainWindow):
         self.generate_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)
         elapsed = time.time() - self.job_started
-        self.status_label.setText("Fatto in %d secondi." % int(elapsed))
+        if _event.get("cancelled"):
+            self.status_label.setText("Generazione annullata.")
+        else:
+            self.status_label.setText("Fatto in %d secondi." % int(elapsed))
         if not self.keep_box.isChecked():
             self.client.stop()
 
@@ -494,6 +506,8 @@ class MainWindow(QMainWindow):
         self.generate_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)
         message = event.get("msg", "Errore sconosciuto")
+        if not self.client.model_loaded:
+            self.model_state.setText("Modello non caricato")
         self.status_label.setText("Errore: %s" % message.splitlines()[0][:160])
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
@@ -515,7 +529,7 @@ class MainWindow(QMainWindow):
         if self.log_dialog is not None and self.log_dialog.isVisible():
             self.log_view.appendPlainText(line)
         match = re.search(r"(\d{1,3})%\|", line)
-        if match and not self.client.busy:
+        if match and not self.seen_progress:
             name = line.split(":", 1)[0].strip()[:40]
             self.status_label.setText("Scarico il modello: %s%% %s" % (match.group(1), name))
 
@@ -625,8 +639,9 @@ class MainWindow(QMainWindow):
     def _gpu_summary(self) -> str:
         gpu = config.detect_gpu()
         if gpu["nvidia"]:
-            return "%s · %s GB · %s" % (gpu["name"], gpu["vram_gb"],
-                                        config.MEMORY_MODES[self.settings.memory_mode])
+            mode = config.MEMORY_MODES.get(self.settings.memory_mode,
+                                           config.MEMORY_MODES["auto"])
+            return "%s · %s GB · %s" % (gpu["name"], gpu["vram_gb"], mode)
         return "Nessuna GPU NVIDIA"
 
     def _save_form(self):
@@ -667,7 +682,8 @@ class MainWindow(QMainWindow):
     def _open_path(path: Path):
         path = Path(path)
         if path.is_file():
-            subprocess.Popen(["explorer", "/select,", str(path)])
+            # explorer vuole il percorso attaccato a /select, in un'unica stringa
+            subprocess.Popen('explorer /select,"%s"' % path)
         else:
             path.mkdir(parents=True, exist_ok=True)
             os.startfile(str(path))  # noqa: S606 - apertura cartella su Windows

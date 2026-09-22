@@ -241,6 +241,7 @@ class SetupDialog(QDialog):
             self.close_btn.setVisible(True)
             self.cancel_btn.setVisible(False)
         else:
+            self.cancel_btn.setEnabled(True)
             self.step_label.setText("Installazione non riuscita.")
             self.step_label.setStyleSheet("color:#f87171;")
             self.log_view.appendPlainText("\n" + error)
@@ -248,13 +249,23 @@ class SetupDialog(QDialog):
     def cancel_install(self):
         if self.task and self.thread and self.thread.isRunning():
             self.task.stop()
+            self.cancel_btn.setEnabled(False)
             self.append_line("Interrompo al termine del passo in corso...")
             return
         self.reject()
 
     def closeEvent(self, event):
-        if self.thread and self.thread.isRunning():
-            self.task.stop() if self.task else None
-            self.thread.quit()
-            self.thread.wait(3000)
+        """Non si chiude mentre pip sta lavorando.
+
+        Distruggere il QThread con il lavoro in corso fa abortire il programma,
+        e una seconda finestra farebbe partire una seconda installazione sullo
+        stesso ambiente.
+        """
+        if self.thread is not None and self.thread.isRunning():
+            if self.task is not None:
+                self.task.stop()
+            self.step_label.setText(
+                "Aspetto che il passo in corso finisca, poi chiudo...")
+            event.ignore()
+            return
         super().closeEvent(event)

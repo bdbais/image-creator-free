@@ -33,7 +33,12 @@ def runtime_dir() -> Path:
 
 
 def runtime_python() -> Path:
-    return runtime_dir() / "Scripts" / "python.exe"
+    """L'interprete del runtime: venv (Scripts) o copia embeddable (radice)."""
+    venv = runtime_dir() / "Scripts" / "python.exe"
+    if venv.exists():
+        return venv
+    embedded = runtime_dir() / "python.exe"
+    return embedded if embedded.exists() else venv
 
 
 def worker_script() -> Path:
@@ -52,8 +57,10 @@ def worker_script() -> Path:
         if not target.exists() or target.read_bytes() != bundled:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(bundled)
-    except OSError:
-        pass
+    except OSError as exc:
+        if not target.exists():
+            raise RuntimeError(
+                "Non riesco a scrivere %s: %s" % (target, exc)) from exc
     return target
 
 
@@ -147,14 +154,21 @@ class Settings:
             pass
 
     def out_path(self) -> Path:
-        p = Path(self.output_dir or default_output_dir())
-        p.mkdir(parents=True, exist_ok=True)
-        return p
+        """La cartella delle immagini, con ritorno alla predefinita se non si puo' usare."""
+        for candidate in (Path(self.output_dir or default_output_dir()), default_output_dir()):
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                return candidate
+            except OSError:
+                continue
+        return Path.home()
 
     def env_for_worker(self) -> dict:
         env = dict(os.environ)
         if self.models_dir:
-            env["HF_HOME"] = self.models_dir
+            # Solo la cache dei modelli: spostando HF_HOME si sposterebbe anche
+            # il token di Hugging Face, e senza token il Hub limita la banda.
+            env["HF_HUB_CACHE"] = self.models_dir
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONUTF8"] = "1"
         env["HF_HUB_DISABLE_TELEMETRY"] = "1"

@@ -46,11 +46,13 @@ class TestConfig(unittest.TestCase):
         settings.save()
         self.assertEqual(config.Settings.load().aspect, "16:9")
 
-    def test_env_worker_non_espone_telemetria(self):
+    def test_env_worker_sposta_solo_la_cache_dei_modelli(self):
         settings = config.Settings.load()
         settings.models_dir = str(ROOT)
         env = settings.env_for_worker()
-        self.assertEqual(env["HF_HOME"], str(ROOT))
+        self.assertEqual(env["HF_HUB_CACHE"], str(ROOT))
+        # HF_HOME resta dov'è: lì sta il token di Hugging Face.
+        self.assertNotIn("HF_HOME", set(env) - set(__import__("os").environ))
         self.assertEqual(env["HF_HUB_DISABLE_TELEMETRY"], "1")
 
 

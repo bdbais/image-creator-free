@@ -157,15 +157,8 @@ def _bootstrap_embedded(log: Log) -> Path:
     _run([str(python), str(get_pip), "--no-warn-script-location"], log)
     get_pip.unlink(missing_ok=True)
 
-    scripts = target / "Scripts"
-    scripts.mkdir(exist_ok=True)
-    shim = scripts / "python.exe"
-    if not shim.exists():
-        try:
-            shim.hardlink_to(python)
-        except (OSError, AttributeError):
-            shutil.copy2(python, shim)
-    return shim
+    # Niente copia in Scripts: l'embeddable trova le sue DLL solo accanto a se'.
+    return python
 
 
 def _run(cmd: list[str], log: Log, env: dict | None = None) -> None:
@@ -287,7 +280,12 @@ def verify(log: Log | None = None) -> dict:
 
 
 def model_cache_dir(settings) -> Path:
-    home = settings.models_dir or os.environ.get("HF_HOME") or str(Path.home() / ".cache" / "huggingface")
+    if settings.models_dir:
+        return Path(settings.models_dir)
+    cache = os.environ.get("HF_HUB_CACHE")
+    if cache:
+        return Path(cache)
+    home = os.environ.get("HF_HOME") or str(Path.home() / ".cache" / "huggingface")
     return Path(home) / "hub"
 
 

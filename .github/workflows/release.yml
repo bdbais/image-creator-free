@@ -56,7 +56,8 @@ jobs:
           $exe = "$env:LOCALAPPDATA\Programs\Image Creator Free\ImageCreatorFree.exe"
           if (-not (Test-Path $exe)) { $exe = "$env:ProgramFiles\Image Creator Free\ImageCreatorFree.exe" }
           if (-not (Test-Path $exe)) { throw "eseguibile non installato" }
-          & $exe --self-test
+          # Il pipe forza PowerShell ad aspettare un eseguibile senza console.
+          & $exe --self-test | Out-Null
           if ($LASTEXITCODE -ne 0) { throw "self test fallito dopo l'installazione" }
           $uninst = Get-ChildItem (Split-Path $exe) -Filter "unins*.exe" | Select-Object -First 1
           Start-Process $uninst.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait
