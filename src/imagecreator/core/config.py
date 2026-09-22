@@ -14,6 +14,50 @@ IS_FROZEN = getattr(sys, "frozen", False)
 NO_WINDOW_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
+def silence_crash_dialogs() -> None:
+    """Evita i popup di Windows quando un sottoprocesso va in errore.
+
+    La modalità di errore si eredita nei figli: senza questo, un crash del
+    motore mostrerebbe all'utente una finestra di sistema incomprensibile al
+    posto del messaggio dell'applicazione.
+    """
+    if os.name != "nt":
+        return
+    try:
+        import ctypes
+
+        ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002)
+    except (AttributeError, OSError):
+        pass
+
+
+def ensure_hidden_console() -> bool:
+    """Dà al processo una console valida ma invisibile.
+
+    L'eseguibile è compilato senza console: i processi che lancia ereditano
+    handle non validi e alcune librerie native (transformers, caricando i
+    modelli Qwen) vanno in errore di memoria prima ancora di partire.
+    Allocare una console e nasconderne subito la finestra risolve, senza che
+    all'utente compaia nulla.
+    """
+    if not IS_FROZEN or os.name != "nt":
+        return False
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        if kernel32.GetConsoleWindow() != 0:
+            return False            # una console c'è già
+        if not kernel32.AllocConsole():
+            return False
+        finestra = kernel32.GetConsoleWindow()
+        if finestra:
+            ctypes.windll.user32.ShowWindow(finestra, 0)   # SW_HIDE
+        return True
+    except (AttributeError, OSError):
+        return False
+
+
 def app_dir() -> Path:
     """Cartella che contiene l'eseguibile (build) o la radice del repo (sviluppo)."""
     if IS_FROZEN:
@@ -22,14 +66,33 @@ def app_dir() -> Path:
 
 
 def data_dir() -> Path:
-    base = os.environ.get("LOCALAPPDATA") or str(Path.home())
-    d = Path(base) / "ImageCreatorFree"
+    """Impostazioni, storico e registro.
+
+    Di norma sotto %LOCALAPPDATA%; la variabile ICF_DATA_DIR permette di
+    spostare tutto su un altro disco quando quello di sistema è pieno.
+    """
+    scelta = os.environ.get("ICF_DATA_DIR", "").strip()
+    d = Path(scelta) if scelta else Path(
+        os.environ.get("LOCALAPPDATA") or str(Path.home())) / "ImageCreatorFree"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 def runtime_dir() -> Path:
-    """Ambiente Python separato con torch + diffusers, creato al primo avvio."""
+    """Ambiente Python separato con torch + diffusers, creato al primo avvio.
+
+    Occupa circa 5 GB: su richiesta può stare su un altro disco, perche' il
+    disco di sistema spesso non ha spazio. La scelta è nelle impostazioni e
+    viene letta dal file senza costruire un oggetto Settings, per non creare
+    dipendenze circolari.
+    """
+    try:
+        raw = json.loads((data_dir() / "settings.json").read_text(encoding="utf-8"))
+        scelto = (raw.get("runtime_dir") or "").strip()
+        if scelto:
+            return Path(scelto)
+    except (OSError, ValueError):
+        pass
     return data_dir() / "runtime"
 
 
@@ -113,6 +176,7 @@ def resolution_for(aspect: str, quality: str) -> tuple[int, int]:
 @dataclass
 class Settings:
     model_id: str = MODEL_ID
+    runtime_dir: str = ""             # vuoto = dentro %LOCALAPPDATA%
     models_dir: str = ""              # vuoto = cache Hugging Face predefinita
     output_dir: str = ""
     memory_mode: str = "auto"
@@ -165,7 +229,9 @@ class Settings:
         return Path.home()
 
     def env_for_worker(self) -> dict:
-        env = dict(os.environ)
+        from . import runtime
+
+        env = runtime.clean_env()
         if self.models_dir:
             # Solo la cache dei modelli: spostando HF_HOME si sposterebbe anche
             # il token di Hugging Face, e senza token il Hub limita la banda.

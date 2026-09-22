@@ -41,10 +41,8 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="ImageCreatorFree",
     debug=False,
     bootloader_ignore_signals=False,
@@ -59,4 +57,16 @@ exe = EXE(
     entitlements_file=None,
     icon="assets/ImageCreatorFree.ico",
     version="build/version_info.txt",
+)
+
+# Cartella invece di file unico: con il file unico i processi lanciati
+# dall'applicazione (l'interprete del runtime) andavano in errore di memoria.
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    name="ImageCreatorFree",
 )

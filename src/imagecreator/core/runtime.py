@@ -161,12 +161,56 @@ def _bootstrap_embedded(log: Log) -> Path:
     return python
 
 
+def clean_env() -> dict:
+    """Ambiente per i sottoprocessi, ripulito da quello dell'eseguibile congelato.
+
+    PyInstaller mette la propria cartella temporanea in testa al PATH e lascia
+    in giro variabili che confondono un altro interprete Python: quello del
+    runtime deve partire come se lo avesse lanciato l'utente.
+    """
+    env = dict(os.environ)
+    for chiave in ("PYTHONHOME", "PYTHONPATH", "PYTHONSTARTUP", "PYTHONEXECUTABLE",
+                   "PYTHONIOENCODING", "_MEIPASS2", "_PYI_APPLICATION_HOME_DIR",
+                   "_PYI_ARCHIVE_FILE", "_PYI_PARENT_PROCESS_LEVEL",
+                   "QT_PLUGIN_PATH", "QML2_IMPORT_PATH", "QT_QPA_PLATFORM_PLUGIN_PATH",
+                   "PYSIDE6_OPTION_PYTHON_ENUM"):
+        env.pop(chiave, None)
+
+    # Via dal PATH tutto ciò che sta dentro l'applicazione: lì vivono le DLL
+    # di Qt e la runtime C++ del bundle, che un altro interprete non deve
+    # caricare al posto delle proprie.
+    nostre = []
+    for radice in (getattr(sys, "_MEIPASS", None), str(config.app_dir())):
+        if radice:
+            try:
+                nostre.append(Path(radice).resolve())
+            except OSError:
+                pass
+    if nostre:
+        tenute = []
+        for voce in env.get("PATH", "").split(os.pathsep):
+            if not voce:
+                continue
+            try:
+                risolta = Path(voce).resolve()
+            except OSError:
+                tenute.append(voce)
+                continue
+            if any(risolta == r or r in risolta.parents for r in nostre):
+                continue
+            tenute.append(voce)
+        env["PATH"] = os.pathsep.join(tenute)
+    env["PYTHONUNBUFFERED"] = "1"
+    env["PYTHONUTF8"] = "1"
+    return env
+
+
 def _run(cmd: list[str], log: Log, env: dict | None = None) -> None:
     log("> " + " ".join(cmd))
     proc = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
         encoding="utf-8", errors="replace", creationflags=NO_WINDOW,
-        env=env or os.environ.copy(),
+        stdin=subprocess.DEVNULL, env=env or clean_env(),
     )
     assert proc.stdout is not None
     for line in proc.stdout:
@@ -256,18 +300,24 @@ def verify(log: Log | None = None) -> dict:
         "    import transformers;info['transformers']=transformers.__version__\n"
         "except Exception as e: info['transformers_error']=str(e)\n"
         "try:\n"
-        "    import hf_transfer;info['hf_transfer']=True\n"
-        "except Exception: info['hf_transfer']=False\n"
+        "    import hf_xet;info['hf_xet']=True\n"
+        "except Exception: info['hf_xet']=False\n"
         "print(json.dumps(info))\n"
     )
     try:
-        out = subprocess.run([str(python), "-c", code], capture_output=True, text=True,
-                             timeout=300, creationflags=NO_WINDOW)
+        out = subprocess.run([str(python), "-c", code], capture_output=True,
+                             text=True, encoding="utf-8", errors="replace",
+                             timeout=600, creationflags=NO_WINDOW,
+                             stdin=subprocess.DEVNULL, env=clean_env())
     except (OSError, subprocess.SubprocessError) as exc:
         raise RuntimeError_("Il runtime non risponde: %s" % exc)
     line = (out.stdout or "").strip().splitlines()
     if not line:
-        raise RuntimeError_("Verifica fallita:\n%s" % (out.stderr or "")[-2000:])
+        # Senza questi dettagli si legge solo "verifica fallita" e non si sa dove guardare.
+        raise RuntimeError_(
+            "Verifica fallita.\nInterprete: %s\nCodice di uscita: %s\n"
+            "Messaggi:\n%s" % (python, out.returncode,
+                               (out.stderr or "(nessuno)")[-2000:]))
     info = json.loads(line[-1])
     if log:
         log("Python %s | torch %s | CUDA %s | diffusers %s" % (

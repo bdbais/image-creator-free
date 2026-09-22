@@ -418,6 +418,9 @@ class MainWindow(QMainWindow):
         width, height = config.resolution_for(self.aspect_box.currentText(), quality)
         refs = self.refs.paths()
 
+        if not self._conferma_se_troppo_grande(width, height):
+            return
+
         seed_text = self.seed_edit.text().strip()
         try:
             seed = int(seed_text) if seed_text else None
@@ -450,6 +453,32 @@ class MainWindow(QMainWindow):
         self.cancel_btn.setEnabled(True)
         self.status_label.setText(
             "In coda... il primo avvio richiede minuti per caricare il modello.")
+
+    def _conferma_se_troppo_grande(self, width: int, height: int) -> bool:
+        """Chiede conferma quando la misura dice che la VRAM non basterà.
+
+        Su una scheda da 12 GB 2048x2048 esaurisce la memoria dopo una
+        ventina di minuti: meglio dirlo prima di farli aspettare.
+        """
+        gpu = config.detect_gpu()
+        vram = gpu.get("vram_gb") or 0
+        if not vram or self.settings.memory_mode not in ("auto", "low"):
+            return True
+        limite = 1536 if vram < 16 else 2048
+        if max(width, height) <= limite:
+            return True
+        risposta = QMessageBox.question(
+            self, "Risoluzione oltre la portata della scheda",
+            "Con %s GB di VRAM una immagine %dx%d di solito finisce la memoria: "
+            "sulla RTX 4070 provata durante lo sviluppo si ferma dopo una ventina "
+            "di minuti.
+
+Fino a %dx%d funziona.
+
+Provo lo stesso?"
+            % (vram, width, height, limite, limite),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        return risposta == QMessageBox.Yes
 
     def cancel(self):
         self.client.cancel()

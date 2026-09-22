@@ -69,10 +69,19 @@ ne occupa 17,5 da solo. Per questo:
 In automatico il programma sceglie da sé. Se vedi *VRAM esaurita*, scendi di
 qualità o imposta a mano l'offload sequenziale in *File → Impostazioni*.
 
-**Quanto ci vuole.** Misure fatte su una RTX 4070 da 12 GB con il modello su
-SSD, in offload sequenziale: caricamento del modello 38 secondi, poi 6,5 secondi
-per passo a 1024x1024, cioè circa due minuti per una immagine da 20 passi. Il
-modello resta caricato, quindi le immagini successive partono subito.
+**Quanto ci vuole.** Misure su una RTX 4070 da 12 GB, modello su SSD, offload
+sequenziale, stesso prompt e stesso seed:
+
+| Configurazione | Tempo | Per passo |
+|---|---|---|
+| Caricamento del modello (da SSD) | 41 s | — |
+| 1024x1024, 20 passi | 3 min | 9,1 s |
+| 1536x1536, 30 passi (Standard) | 8 min 36 s | 17,2 s |
+| 2048x2048, 40 passi (Alta) | VRAM esaurita dopo ~20 min | — |
+
+Il modello resta caricato, quindi le immagini successive partono senza il tempo
+di caricamento. Con 12 GB la qualità Alta non è raggiungibile: il programma
+avvisa prima di provarci.
 
 **Il disco conta più della scheda video.** Con lo stesso identico modello su un
 disco meccanico il caricamento passa da 38 secondi a circa un'ora: i 33 GB

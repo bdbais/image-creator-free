@@ -39,6 +39,21 @@ Il programma installa da solo PyTorch e diffusers in una cartella separata
 generazione. Se sul computer non c'è Python, ne scarica una copia dedicata: non tocca nulla
 di quello che hai già installato.
 
+## Quanto ci mette
+
+Misure su una RTX 4070 da 12 GB con il modello su SSD (offload sequenziale):
+
+| Configurazione | Tempo | Per passo |
+|---|---|---|
+| Caricamento del modello (da SSD) | 41 s | — |
+| 1024x1024, 20 passi | 3 min | 9,1 s |
+| 1536x1536, 30 passi (Standard) | 8 min 36 s | 17,2 s |
+| 2048x2048, 40 passi (Alta) | VRAM esaurita dopo ~20 min | — |
+
+Con 12 GB di VRAM si arriva comodamente a 1536x1536; per la qualità Alta
+servono almeno 16 GB. Il programma avvisa prima di lanciare una risoluzione
+che la scheda non regge.
+
 ## Cosa fa
 
 - **Testo → immagine** fino a 2048x2048, nei sette formati previsti dal modello (1:1, 4:3,
