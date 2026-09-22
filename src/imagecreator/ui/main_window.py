@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import time
+from collections import deque
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QUrl
 from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication, QPixmap
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QComboBox, QDoubleSpinBox, QFileDialog, QFrame, QHBoxLayout,
+    QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
     QPlainTextEdit, QProgressBar, QPushButton, QSpinBox, QSplitter, QTabWidget,
     QVBoxLayout, QWidget,
@@ -37,6 +39,8 @@ class MainWindow(QMainWindow):
         self.current_job = ""
         self.job_started = 0.0
         self.pending = 0
+        self.log_lines: deque[str] = deque(maxlen=3000)
+        self.log_dialog = None
 
         self.setWindowTitle("%s - Qwen-Image-2.1 in locale" % APP_NAME)
         self.resize(1360, 900)
@@ -71,6 +75,10 @@ class MainWindow(QMainWindow):
         model_menu.addAction(self.act_load)
         act = QAction("Chiudi il processo di generazione", self)
         act.triggered.connect(self.client.stop)
+        model_menu.addAction(act)
+        act = QAction("Mostra il registro", self)
+        act.setShortcut("Ctrl+L")
+        act.triggered.connect(self.show_log)
         model_menu.addAction(act)
         model_menu.addSeparator()
         act = QAction("Reinstalla l'ambiente di calcolo...", self)
@@ -370,6 +378,7 @@ class MainWindow(QMainWindow):
         self.client.done.connect(self.on_done)
         self.client.failed.connect(self.on_failed)
         self.client.status.connect(lambda e: self.status_label.setText(e.get("msg", "")))
+        self.client.log.connect(self.on_log)
         self.client.stopped.connect(self.on_worker_stopped)
 
     def ensure_runtime(self) -> bool:
@@ -496,6 +505,38 @@ class MainWindow(QMainWindow):
                 "oppure imposta una modalità di memoria più conservativa.")
         box.exec()
 
+    def on_log(self, line: str):
+        """Raccoglie l'output del processo e ne mostra l'avanzamento nella barra di stato.
+
+        Il download del modello passa di qui come barra testuale di Hugging Face:
+        senza questa riga, i primi 33 GB sarebbero muti.
+        """
+        self.log_lines.append(line)
+        if self.log_dialog is not None and self.log_dialog.isVisible():
+            self.log_view.appendPlainText(line)
+        match = re.search(r"(\d{1,3})%\|", line)
+        if match and not self.client.busy:
+            name = line.split(":", 1)[0].strip()[:40]
+            self.status_label.setText("Scarico il modello: %s%% %s" % (match.group(1), name))
+
+    def show_log(self):
+        from PySide6.QtWidgets import QDialog, QPlainTextEdit, QVBoxLayout
+
+        if self.log_dialog is None:
+            self.log_dialog = QDialog(self)
+            self.log_dialog.setWindowTitle("Registro")
+            self.log_dialog.resize(900, 520)
+            self.log_dialog.setStyleSheet(self.styleSheet())
+            self.log_view = QPlainTextEdit()
+            self.log_view.setReadOnly(True)
+            self.log_view.setMaximumBlockCount(5000)
+            box = QVBoxLayout(self.log_dialog)
+            box.addWidget(self.log_view)
+        self.log_view.setPlainText("\n".join(self.log_lines))
+        self.log_view.moveCursor(self.log_view.textCursor().End)
+        self.log_dialog.show()
+        self.log_dialog.raise_()
+
     def on_worker_stopped(self, code: int):
         self.model_state.setText("Modello non caricato")
         self.generate_btn.setEnabled(True)
@@ -536,8 +577,10 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(entry["path"])
         if pixmap.isNull():
             return
+        area = self.preview.size()
         self.preview.setPixmap(pixmap.scaled(
-            self.preview.size() * 0.98, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            max(120, int(area.width() * 0.98)), max(120, int(area.height() * 0.98)),
+            Qt.KeepAspectRatio, Qt.SmoothTransformation))
         meta = entry.get("meta", {})
         self.meta_label.setText("%s · seed %s · %s passi · %s s · %s" % (
             meta.get("size", "?"), entry.get("seed"), meta.get("steps", "?"),
