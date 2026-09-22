@@ -38,9 +38,11 @@ class TestProtocollo(unittest.TestCase):
         events, proc = talk([{"cmd": "shutdown"}])
         self.assertEqual(proc.returncode, 0, proc.stderr[-500:])
         kinds = [e["ev"] for e in events]
-        self.assertEqual(kinds[0], "hello")
+        # Prima dell'handshake il worker annuncia che sta caricando le librerie.
+        self.assertIn("hello", kinds)
         self.assertEqual(kinds[-1], "bye")
-        self.assertIn("python", events[0])
+        hello = next(e for e in events if e["ev"] == "hello")
+        self.assertIn("python", hello)
 
     def test_comando_sconosciuto_non_uccide_il_worker(self):
         events, proc = talk([{"cmd": "banana"}, {"cmd": "shutdown"}])

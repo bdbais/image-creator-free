@@ -268,6 +268,28 @@ def _try(fn):
         return False
 
 
+def _preload():
+    """Carica torch e diffusers prima di mettere in piedi il thread lettore.
+
+    Su Windows, se un altro thread e' fermo dentro readline() su stdin, il
+    caricamento delle DLL di numpy e torch resta appeso a tempo indeterminato.
+    Importare qui, da soli, costa qualche secondo e toglie di mezzo il problema.
+    """
+    versions = {}
+    try:
+        import torch
+        versions["torch"] = torch.__version__
+        versions["cuda"] = bool(torch.cuda.is_available())
+    except Exception as exc:  # noqa: BLE001 - lo riferiamo, non moriamo qui
+        versions["torch_error"] = str(exc)
+    try:
+        import diffusers
+        versions["diffusers"] = diffusers.__version__
+    except Exception as exc:  # noqa: BLE001
+        versions["diffusers_error"] = str(exc)
+    return versions
+
+
 def _incoming():
     """Comandi in arrivo, letti da un thread a parte.
 
@@ -318,15 +340,10 @@ def main():
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except AttributeError:
         pass
-    if os.environ.get("HF_HUB_ENABLE_HF_TRANSFER") == "1":
-        try:
-            import hf_transfer  # noqa: F401
-        except ImportError:
-            # Senza la libreria, huggingface_hub si rifiuterebbe di partire.
-            os.environ.pop("HF_HUB_ENABLE_HF_TRANSFER", None)
-
+    emit("status", stage="boot", msg="Avvio il motore di generazione...")
+    versions = _preload()
     engine = Engine()
-    emit("hello", pid=os.getpid(), python=sys.version.split()[0], model=MODEL_ID)
+    emit("hello", pid=os.getpid(), python=sys.version.split()[0], model=MODEL_ID, **versions)
 
     for req in _incoming():
         cmd = req.get("cmd")

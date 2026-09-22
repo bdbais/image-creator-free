@@ -40,7 +40,7 @@ BASE_PACKAGES = [
     "safetensors",
     "pillow",
     "huggingface_hub>=0.30",
-    "hf_transfer",
+    "hf_xet",
     "sentencepiece",
     "protobuf",
     "einops",
