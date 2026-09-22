@@ -32,7 +32,7 @@ class ReferenceStrip(QWidget):
         self.list.setToolTip("Trascina qui le immagini da usare come riferimento")
 
         self.hint = QLabel(
-            "Trascina fino a %d immagini: il prompt puo' citarle come "
+            "Trascina fino a %d immagini: il prompt può citarle come "
             "\"image 1\", \"image 2\"..." % MAX_REFS)
         self.hint.setObjectName("hint")
 
@@ -102,7 +102,7 @@ class ReferenceStrip(QWidget):
             self.hint.setText("%d immagini di riferimento su %d" % (count, MAX_REFS))
         else:
             self.hint.setText(
-                "Trascina fino a %d immagini: il prompt puo' citarle come "
+                "Trascina fino a %d immagini: il prompt può citarle come "
                 "\"image 1\", \"image 2\"..." % MAX_REFS)
         self.changed.emit(count)
 

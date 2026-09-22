@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Avvia davvero il worker come sottoprocesso e verifica il dialogo JSON Lines.
 
-Non serve ne' il modello ne' diffusers: si controllano handshake, comandi
-sconosciuti, chiusura pulita e - se torch e' installato - il comando probe.
+Non serve né il modello né diffusers: si controllano handshake, comandi
+sconosciuti, chiusura pulita e - se torch è installato - il comando probe.
 """
 import json
 import os
@@ -52,7 +52,7 @@ class TestProtocollo(unittest.TestCase):
         env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONUTF8="1")
         proc = subprocess.run(
             [sys.executable, "-u", str(WORKER)],
-            input="questa non e' json\n" + json.dumps({"cmd": "shutdown"}) + "\n",
+            input="questa non è json\n" + json.dumps({"cmd": "shutdown"}) + "\n",
             capture_output=True, text=True, encoding="utf-8", timeout=120, env=env)
         self.assertEqual(proc.returncode, 0)
         self.assertIn('"ev": "bye"', proc.stdout.replace('"ev":"bye"', '"ev": "bye"'))

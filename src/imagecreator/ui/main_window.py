@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
         for label, url in (("Sito del progetto", SITE_URL),
                            ("Codice sorgente su GitHub", REPO_URL),
                            ("Il modello su Hugging Face", MODEL_URL),
-                           ("Offri un caffe'", DONATE_URL)):
+                           ("Offri un caffè", DONATE_URL)):
             act = QAction(label, self)
             act.triggered.connect(lambda _=False, u=url: QDesktopServices.openUrl(QUrl(u)))
             help_menu.addAction(act)
@@ -356,7 +356,7 @@ class MainWindow(QMainWindow):
             btn.clicked.connect(slot)
             actions.addWidget(btn)
         actions.addStretch(1)
-        donate = QPushButton("Offri un caffe'")
+        donate = QPushButton("Offri un caffè")
         donate.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(DONATE_URL)))
         actions.addWidget(donate)
         box.addLayout(actions)
@@ -488,12 +488,12 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Errore: %s" % message.splitlines()[0][:160])
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
-        box.setWindowTitle("La generazione non e' riuscita")
+        box.setWindowTitle("La generazione non è riuscita")
         box.setText(message[:800])
         if event.get("kind") == "oom":
             box.setInformativeText(
-                "Suggerimento: scegli la qualita' Bozza, riduci il numero di immagini "
-                "oppure imposta una modalita' di memoria piu' conservativa.")
+                "Suggerimento: scegli la qualità Bozza, riduci il numero di immagini "
+                "oppure imposta una modalità di memoria più conservativa.")
         box.exec()
 
     def on_worker_stopped(self, code: int):
@@ -503,7 +503,7 @@ class MainWindow(QMainWindow):
         self.bar.setVisible(False)
         if code not in (0, 62097):
             self.status_label.setText(
-                "Il processo di generazione si e' chiuso (codice %s)." % code)
+                "Il processo di generazione si è chiuso (codice %s)." % code)
 
     # =================================================================== galleria
     def _load_history(self):

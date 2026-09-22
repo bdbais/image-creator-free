@@ -23,20 +23,20 @@ I file non sono firmati: la prima volta Windows SmartScreen mostra un avviso, si
 
 | | |
 |---|---|
-| Scheda video | NVIDIA con 12 GB di VRAM o piu'. Con 8-10 GB funziona in modalita' lenta; senza GPU gira sulla CPU, ma con tempi nell'ordine delle decine di minuti |
+| Scheda video | NVIDIA con 12 GB di VRAM o più. Con 8-10 GB funziona in modalità lenta; senza GPU gira sulla CPU, ma con tempi nell'ordine delle decine di minuti |
 | Disco | circa 3 GB per l'ambiente di calcolo + 33 GB per il modello |
 | Rete | solo per i due download iniziali |
 
 Il programma installa da solo PyTorch e diffusers in una cartella separata
 (`%LOCALAPPDATA%\ImageCreatorFree\runtime`) e scarica il modello da Hugging Face alla prima
-generazione. Se sul computer non c'e' Python, ne scarica una copia dedicata: non tocca nulla
-di quello che hai gia' installato.
+generazione. Se sul computer non c'è Python, ne scarica una copia dedicata: non tocca nulla
+di quello che hai già installato.
 
 ## Cosa fa
 
 - **Testo → immagine** fino a 2048x2048, nei sette formati previsti dal modello (1:1, 4:3,
   3:4, 3:2, 2:3, 16:9, 9:16).
-- **Testo dentro l'immagine**: Qwen-Image-2.1 e' fatto apposta per insegne, manifesti e
+- **Testo dentro l'immagine**: Qwen-Image-2.1 è fatto apposta per insegne, manifesti e
   didascalie. Metti tra virgolette le parole che devono comparire.
 - **Immagini trasparenti (RGBA)** native, per sticker e loghi ritagliati.
 - **Modifica di immagini**: fino a 10 riferimenti trascinati nella finestra, citabili nel
@@ -45,7 +45,7 @@ di quello che hai gia' installato.
   pronti da caricare con un clic.
 - **Galleria locale** con seed, passi e parametri salvati dentro il PNG: "Riusa i parametri"
   rimette tutto com'era.
-- Tre livelli di qualita' e quattro modalita' di uso della memoria, per non finire la VRAM.
+- Tre livelli di qualità e quattro modalità di uso della memoria, per non finire la VRAM.
 
 ## Privacy
 
@@ -97,8 +97,8 @@ La pipeline in `.github/workflows/release.yml` costruisce, testa e pubblica la r
 
 ## Sostieni il progetto
 
-Image Creator Free e' gratuito e open source, e lo restera'. Se ti fa risparmiare tempo puoi
-offrire un caffe' a chi lo mantiene: **[paypal.me/bellizia](https://paypal.me/bellizia)**.
+Image Creator Free è gratuito e open source, e lo resterà. Se ti fa risparmiare tempo puoi
+offrire un caffè a chi lo mantiene: **[paypal.me/bellizia](https://paypal.me/bellizia)**.
 Nessun obbligo, e niente cambia nel programma.
 
 ## Contributori
@@ -108,9 +108,9 @@ Nessun obbligo, e niente cambia nel programma.
 
 ## Licenza
 
-Il codice di questo programma e' distribuito con licenza **MIT** (vedi `LICENSE`).
+Il codice di questo programma è distribuito con licenza **MIT** (vedi `LICENSE`).
 
-Il modello **Qwen-Image-2.1** non e' incluso e non viene ridistribuito: lo scarica
+Il modello **Qwen-Image-2.1** non è incluso e non viene ridistribuito: lo scarica
 l'utente da Hugging Face. I suoi pesi sono soggetti alla
 [Qwen Research License](https://huggingface.co/Qwen/Qwen-Image-2.1/blob/main/LICENSE), che
 ne consente l'uso **per ricerca e valutazione, non per scopi commerciali**. Vedi `NOTICE`.

@@ -1,6 +1,6 @@
 """Preparazione dell'ambiente Python che esegue il modello.
 
-La GUI e' un eseguibile leggero: torch, diffusers e transformers vivono in un
+La GUI è un eseguibile leggero: torch, diffusers e transformers vivono in un
 ambiente separato sotto %LOCALAPPDATA%\\ImageCreatorFree\\runtime, creato al
 primo avvio. Cosi' l'installer resta piccolo e un aggiornamento della GUI non
 obbliga a riscaricare 3 GB di librerie.
@@ -47,14 +47,14 @@ BASE_PACKAGES = [
 ]
 
 # La model card di Qwen-Image-2.1 chiede diffusers dal ramo di sviluppo:
-# QwenImage21Pipeline non e' ancora in una release su PyPI.
+# QwenImage21Pipeline non è ancora in una release su PyPI.
 DIFFUSERS_SPEC = "git+https://github.com/huggingface/diffusers"
 
 Log = Callable[[str], None]
 
 
 class RuntimeError_(RuntimeError):
-    """Errore di preparazione dell'ambiente, con messaggio gia' leggibile."""
+    """Errore di preparazione dell'ambiente, con messaggio già leggibile."""
 
 
 def marker_path() -> Path:
@@ -90,7 +90,7 @@ def choose_torch_variant(requested: str = "auto") -> str:
 
 # --------------------------------------------------------------------- python base
 def find_system_python() -> Path | None:
-    """Un Python 3.10-3.13 gia' presente, se c'e': evita di scaricarne un altro."""
+    """Un Python 3.10-3.13 già presente, se c'è: evita di scaricarne un altro."""
     candidates: list[str] = []
     try:
         out = subprocess.run(["py", "-0p"], capture_output=True, text=True, timeout=15,
@@ -197,7 +197,7 @@ def install(log: Log, torch_variant: str = "auto",
     if not python.exists():
         base = find_system_python()
         if base is not None:
-            log("Uso Python gia' installato: %s" % base)
+            log("Uso Python già installato: %s" % base)
             log("Creo l'ambiente in %s" % runtime)
             _run([str(base), "-m", "venv", str(runtime)], log)
         else:
@@ -278,7 +278,7 @@ def verify(log: Log | None = None) -> dict:
             info.get("diffusers", "?")))
         if info.get("diffusers") and not info.get("qwen_pipeline"):
             log("Attenzione: questa diffusers non espone QwenImage21Pipeline; "
-                "l'app usera' la pipeline dichiarata dal modello.")
+                "l'app userà la pipeline dichiarata dal modello.")
     return info
 
 

@@ -88,7 +88,7 @@ class Engine:
 
         if not info["cuda"]:
             self.device = "cpu"
-            emit("status", msg="Nessuna GPU NVIDIA: uso la CPU, sara' molto lento.", stage="load")
+            emit("status", msg="Nessuna GPU NVIDIA: uso la CPU, sarà molto lento.", stage="load")
         elif mode == "high":
             pipe.to("cuda")
             self.device = "cuda"
@@ -111,7 +111,7 @@ class Engine:
 
     @staticmethod
     def _from_pretrained(model_id, dtype):
-        """QwenImage21Pipeline se c'e', altrimenti la pipeline dichiarata dal modello."""
+        """QwenImage21Pipeline se c'è, altrimenti la pipeline dichiarata dal modello."""
         errors = []
         try:
             from diffusers import QwenImage21Pipeline  # type: ignore
@@ -190,8 +190,8 @@ class Engine:
             except torch.cuda.OutOfMemoryError:
                 torch.cuda.empty_cache()
                 emit("error", id=job, kind="oom", msg=(
-                    "VRAM esaurita. Riduci la risoluzione o scegli una modalita' di memoria "
-                    "piu' conservativa nelle impostazioni."))
+                    "VRAM esaurita. Riduci la risoluzione o scegli una modalità di memoria "
+                    "più conservativa nelle impostazioni."))
                 return
             except Exception as exc:  # noqa: BLE001 - riportiamo tutto alla GUI
                 emit("error", id=job, msg=str(exc), trace=traceback.format_exc())

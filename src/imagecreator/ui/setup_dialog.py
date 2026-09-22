@@ -11,8 +11,8 @@ from ..core import config, runtime
 
 LICENSE_TEXT = (
     "I pesi di Qwen-Image-2.1 sono distribuiti con la Qwen Research License: "
-    "l'uso e' consentito per ricerca e valutazione, non per scopi commerciali. "
-    "Questo programma e' open source (MIT) e non ridistribuisce il modello: lo "
+    "l'uso è consentito per ricerca e valutazione, non per scopi commerciali. "
+    "Questo programma è open source (MIT) e non ridistribuisce il modello: lo "
     "scarica da Hugging Face sul tuo computer."
 )
 
@@ -84,11 +84,11 @@ class SetupDialog(QDialog):
 
         if gpu["nvidia"]:
             mode = config.suggest_memory_mode(gpu["vram_gb"])
-            gpu_line = "Scheda video: %s, %s GB di VRAM - modalita' consigliata: %s" % (
+            gpu_line = "Scheda video: %s, %s GB di VRAM - modalità consigliata: %s" % (
                 gpu["name"], gpu["vram_gb"], config.MEMORY_MODES[mode])
             self.settings.memory_mode = "auto"
         else:
-            gpu_line = ("Nessuna GPU NVIDIA rilevata: il programma funzionera' sulla CPU, "
+            gpu_line = ("Nessuna GPU NVIDIA rilevata: il programma funzionerà sulla CPU, "
                         "con tempi nell'ordine delle decine di minuti per immagine.")
         gpu_label = QLabel(gpu_line)
         gpu_label.setWordWrap(True)
@@ -119,7 +119,7 @@ class SetupDialog(QDialog):
 
         row = QHBoxLayout()
         row.addStretch(1)
-        later = QPushButton("Piu' tardi")
+        later = QPushButton("Più tardi")
         later.clicked.connect(self.reject)
         row.addWidget(later)
         self.start_btn = QPushButton("Installa ora")
@@ -199,7 +199,7 @@ class SetupDialog(QDialog):
         if ok:
             self.settings.setup_done = True
             self.settings.save()
-            self.step_label.setText("Fatto: l'ambiente e' pronto.")
+            self.step_label.setText("Fatto: l'ambiente è pronto.")
             self.close_btn.setVisible(True)
             self.cancel_btn.setVisible(False)
         else:

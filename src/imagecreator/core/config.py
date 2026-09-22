@@ -40,7 +40,7 @@ def worker_script() -> Path:
     """Il worker gira con il Python del runtime, quindi vive come file su disco.
 
     In sviluppo si usa il sorgente del repo; nell'eseguibile viene estratto una
-    volta dal bundle in %LOCALAPPDATA%, cosi' la versione portatile e' un file solo.
+    volta dal bundle in %LOCALAPPDATA%, così la versione portatile è un file solo.
     """
     if not IS_FROZEN:
         return app_dir() / "worker" / "qwen_worker.py"
@@ -80,7 +80,7 @@ ASPECT_RATIOS = {
 }
 
 # Le dimensioni della model card sono pensate per schede da 24 GB e oltre.
-# Su GPU piu' piccole la stessa proporzione viene scalata.
+# Su GPU più piccole la stessa proporzione viene scalata.
 QUALITY = {
     "draft": {"label": "Bozza - veloce", "scale": 0.5, "steps": 20},
     "standard": {"label": "Standard", "scale": 0.75, "steps": 30},
@@ -89,7 +89,7 @@ QUALITY = {
 
 MEMORY_MODES = {
     "auto": "Automatico (in base alla VRAM)",
-    "high": "Tutto in VRAM (24 GB o piu')",
+    "high": "Tutto in VRAM (24 GB o più)",
     "balanced": "Offload dei moduli su CPU (12-16 GB)",
     "low": "Offload sequenziale (8-10 GB, lento)",
 }
@@ -110,7 +110,7 @@ class Settings:
     memory_mode: str = "auto"
     quality: str = "standard"
     aspect: str = "1:1"
-    steps: int = 0                    # 0 = usa il valore della qualita' scelta
+    steps: int = 0                    # 0 = usa il valore della qualità scelta
     true_cfg_scale: float = 4.0
     negative_prompt: str = ""
     last_prompt: str = ""

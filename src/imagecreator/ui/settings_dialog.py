@@ -48,7 +48,7 @@ class SettingsDialog(QDialog):
             "Runtime: %s · torch %s · diffusers %s\nModello scaricato: %s" % (
                 "installato" if runtime.is_ready() else "assente",
                 info.get("torch", "-"), info.get("diffusers", "-"),
-                ("si', %s GB" % runtime.model_size_on_disk(settings, settings.model_id))
+                ("sì, %s GB" % runtime.model_size_on_disk(settings, settings.model_id))
                 if runtime.model_is_downloaded(settings, settings.model_id) else "no"))
         status.setObjectName("muted")
 
