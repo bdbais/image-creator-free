@@ -8,6 +8,11 @@ Sito del progetto: **https://imagecreator.bais.info** · [Manuale](docs/MANUALE.
 
 ![Schermata di Image Creator Free](docs/img/schermata.png)
 
+Un esempio vero, generato con il prompt ufficiale dell'insegna al neon su una
+RTX 4070 da 12 GB: 1024x1024, 20 passi, 2 minuti e 10 secondi.
+
+![Insegna al neon generata](docs/img/esempio-neon.png)
+
 ## Scarica
 
 Windows 10/11 a 64 bit:
@@ -25,7 +30,7 @@ I file non sono firmati: la prima volta Windows SmartScreen mostra un avviso, si
 |---|---|
 | Scheda video | NVIDIA da 8 GB di VRAM in su. Il modello occupa 33 GB in bf16, quindi sotto i 20 GB di VRAM resta in RAM e viene spostato sulla GPU un pezzo alla volta: funziona bene, ma è più lento. Senza GPU gira sulla CPU, con tempi nell'ordine delle decine di minuti |
 | RAM | 32 GB consigliati; con 16 GB funziona ma il sistema usa molto il file di scambio |
-| Pazienza | sotto i 20 GB di VRAM il modello viaggia fra RAM e scheda a ogni passo: su una 4070 da 12 GB il primo caricamento richiede circa 45 minuti e una immagine ore. Da 20 GB in su i tempi scendono di molto |
+| Disco del modello | **un SSD**: i 33 GB vengono riletti a ogni caricamento. Misurato su questa macchina: 38 secondi da SSD, circa un'ora da disco meccanico |
 | Disco | 3 GB per l'ambiente di calcolo e 33 GB per il modello, su un disco a scelta (lo chiede al primo avvio) |
 | Rete | solo per i due download iniziali |
 

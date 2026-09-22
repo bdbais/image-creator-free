@@ -69,12 +69,15 @@ ne occupa 17,5 da solo. Per questo:
 In automatico il programma sceglie da sé. Se vedi *VRAM esaurita*, scendi di
 qualità o imposta a mano l'offload sequenziale in *File → Impostazioni*.
 
-**Quanto ci vuole.** Con l'offload sequenziale il collo di bottiglia non è la
-scheda video ma il viavai dei pesi fra RAM e VRAM: su una RTX 4070 da 12 GB il
-primo caricamento del modello richiede circa tre quarti d'ora e ogni passo di
-diffusione parecchi minuti, quindi una immagine è questione di ore. Da 20 GB di
-VRAM in su si passa all'offload dei moduli e i tempi scendono di un ordine di
-grandezza. Tienine conto prima di lanciare un gruppo di otto immagini.
+**Quanto ci vuole.** Misure fatte su una RTX 4070 da 12 GB con il modello su
+SSD, in offload sequenziale: caricamento del modello 38 secondi, poi 6,5 secondi
+per passo a 1024x1024, cioè circa due minuti per una immagine da 20 passi. Il
+modello resta caricato, quindi le immagini successive partono subito.
+
+**Il disco conta più della scheda video.** Con lo stesso identico modello su un
+disco meccanico il caricamento passa da 38 secondi a circa un'ora: i 33 GB
+vengono letti per intero a ogni avvio. Tieni il modello su un SSD; il programma
+lo propone da sé e avvisa se scegli un disco a piatti.
 
 ## Dove finiscono le cose
 
