@@ -73,6 +73,24 @@ def impronta_attesa(url_somme: str, nome_file: str, timeout: float = 20.0) -> st
     return ""
 
 
+def note_leggibili(testo: str) -> str:
+    """Toglie gli a capo di impaginazione del changelog, tiene elenchi e paragrafi.
+
+    Nel CHANGELOG.md le righe vanno a capo a 80 colonne: le continuazioni di una
+    voce d'elenco (righe rientrate) si riuniscono alla voce.
+    """
+    righe = []
+    for riga in testo.replace("\r\n", "\n").split("\n"):
+        pulita = riga.strip()
+        continua = (riga.startswith((" ", "\t")) and pulita
+                    and not pulita.startswith(("- ", "* ", "#")) and righe and righe[-1])
+        if continua:
+            righe[-1] = righe[-1].rstrip() + " " + pulita
+        else:
+            righe.append(pulita)
+    return "\n".join(righe).strip()
+
+
 def changelog(versione: str = __version__) -> str:
     """Le novita' di una versione, prese da CHANGELOG.md."""
     for percorso in (config.app_dir() / "CHANGELOG.md",

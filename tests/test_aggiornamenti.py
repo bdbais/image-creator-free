@@ -24,6 +24,11 @@ class TestAggiornamenti(unittest.TestCase):
         self.assertTrue(testo, "CHANGELOG.md deve avere la sezione %s" % __version__)
         self.assertNotIn("## ", testo)
 
+    def test_note_senza_a_capo_di_impaginazione(self):
+        testo = "- Prima voce che va\n  a capo.\n- Seconda\n\nParagrafo."
+        self.assertEqual(ag.note_leggibili(testo),
+                         "- Prima voce che va a capo.\n- Seconda\n\nParagrafo.")
+
     def test_changelog_versione_precedente(self):
         self.assertIn("Prima versione", ag.changelog("1.0.0"))
 

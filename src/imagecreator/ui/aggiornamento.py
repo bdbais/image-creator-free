@@ -63,6 +63,17 @@ def aggiorna(parent, info: dict) -> None:
     attesa.setMinimumDuration(0)
     attesa.setValue(0)
     lavoro = Scaricatore(info, parent)
+    # Annullamento in un flag nostro: chiudere un QProgressDialog emette anche
+    # canceled(), quindi wasCanceled() dopo close() risulta sempre vero e
+    # l'aggiornamento scaricato non partiva mai.
+    stato = {"annullato": False}
+
+    def annulla():
+        stato["annullato"] = True
+
+    def chiudi_attesa():
+        attesa.canceled.disconnect(annulla)
+        attesa.close()
 
     def avanza(letti, totale):
         if totale:
@@ -71,16 +82,18 @@ def aggiorna(parent, info: dict) -> None:
                 info["version"], letti / 2 ** 20, totale / 2 ** 20))
 
     def pronto(percorso):
-        attesa.close()
-        if attesa.wasCanceled():
+        if stato["annullato"]:
             return
+        chiudi_attesa()
         from pathlib import Path
         aggiornamenti.installa_e_riavvia(Path(percorso), cartella)
         # La finestra si chiude: l'installer parte appena e' uscita e poi la riapre.
         parent.window().close()
 
     def errore(messaggio):
-        attesa.close()
+        if stato["annullato"]:
+            return
+        chiudi_attesa()
         QMessageBox.warning(parent, "Aggiornamento non riuscito",
                             "Non riesco a scaricare l'aggiornamento:\n%s\n\n"
                             "Puoi scaricarlo a mano dalla pagina delle versioni." % messaggio)
@@ -89,24 +102,46 @@ def aggiorna(parent, info: dict) -> None:
     lavoro.avanzamento.connect(avanza)
     lavoro.finito.connect(pronto)
     lavoro.fallito.connect(errore)
-    attesa.canceled.connect(lavoro.terminate)
+    # Niente terminate(): uccidere un thread a meta' download lascia il file
+    # aperto. Se si annulla, il download finisce in silenzio e viene ignorato.
+    attesa.canceled.connect(annulla)
     lavoro.start()
 
 
 def proponi(parent, info: dict) -> None:
     """Chiede se aggiornare, mostrando le novita' della versione nuova."""
-    box = QMessageBox(parent)
-    box.setIcon(QMessageBox.Information)
-    box.setWindowTitle("Nuova versione disponibile")
-    box.setText("È disponibile %s %s (hai la %s)." % (APP_NAME, info["version"], __version__))
-    if info.get("notes"):
-        box.setDetailedText(info["notes"])
-        box.setInformativeText("Le novità sono nei dettagli.")
     installato = aggiornamenti.cartella_installata() is not None
-    si = box.addButton("Aggiorna ora" if installato else "Scarica", QMessageBox.AcceptRole)
-    box.addButton("Più tardi", QMessageBox.RejectRole)
-    box.exec()
-    if box.clickedButton() is si:
+    dialogo = QDialog(parent)
+    dialogo.setWindowTitle("Nuova versione disponibile")
+    box = QVBoxLayout(dialogo)
+    box.addWidget(QLabel("<b>È disponibile %s %s</b> (hai la %s)." % (
+        APP_NAME, info["version"], __version__)))
+    if info.get("notes"):
+        box.addWidget(QLabel("Novità:"))
+        note = QTextBrowser()
+        note.setOpenExternalLinks(True)
+        note.setMarkdown(aggiornamenti.note_leggibili(info["notes"]))
+        note.setFrameShape(QTextBrowser.NoFrame)
+        box.addWidget(note, 1)
+    riga = QHBoxLayout()
+    riga.addStretch(1)
+    dopo = QPushButton("Più tardi")
+    dopo.clicked.connect(dialogo.reject)
+    si = QPushButton("Aggiorna ora" if installato else "Scarica")
+    si.setDefault(True)
+    si.clicked.connect(dialogo.accept)
+    riga.addWidget(dopo)
+    riga.addWidget(si)
+    box.addLayout(riga)
+    if info.get("notes"):
+        # Larga quanto serve alle righe, alta quanto il testo, entro lo schermo.
+        larghezza = 640
+        note.document().setTextWidth(larghezza - 40)
+        altezza = int(note.document().size().height()) + 150
+        schermo = dialogo.screen().availableGeometry() if dialogo.screen() else None
+        massima = int(schermo.height() * 0.8) if schermo else 800
+        dialogo.resize(larghezza, max(260, min(altezza, massima)))
+    if dialogo.exec() == QDialog.Accepted:
         aggiorna(parent, info)
 
 

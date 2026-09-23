@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.1 - 2026-09-23
+
+- Aggiornamento automatico: scaricato l'aggiornamento, l'installazione non
+  partiva. Chi ha la 1.1.x o la 1.2.0 deve installare questa versione a mano,
+  una volta sola; da qui in poi si aggiorna da solo.
+- La finestra "Nuova versione disponibile" mostra le novità in un elenco
+  leggibile, senza a capo spezzati, e si adatta alla lunghezza del testo.
+
 ## 1.2.0 - 2026-09-23
 
 - Video: clip fino a 5 secondi da testo, oppure una foto che prende vita, con
