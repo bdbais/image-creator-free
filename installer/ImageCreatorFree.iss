@@ -43,21 +43,27 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "..\dist\ImageCreatorFree.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\worker\qwen_worker.py"; DestDir: "{app}\worker"; Flags: ignoreversion
+Source: "..\ImageCreatorFree.cmd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\ImageCreatorFree.pyw"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "..\src\imagecreator\*"; DestDir: "{app}\app\src\imagecreator"; Flags: ignoreversion recursesubdirs; Excludes: "__pycache__"
+Source: "..\worker\qwen_worker.py"; DestDir: "{app}\app\worker"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\NOTICE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
+; I collegamenti puntano al lanciatore: la finestra deve girare con il Python
+; dell'ambiente di calcolo, non dentro l'eseguibile.
+Name: "{group}\{#AppName}"; Filename: "{app}\ImageCreatorFree.cmd"; IconFilename: "{app}\{#AppExe}"; Flags: runminimized
 Name: "{group}\Sito del progetto"; Filename: "{#AppUrl}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\ImageCreatorFree.cmd"; IconFilename: "{app}\{#AppExe}"; Flags: runminimized; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\ImageCreatorFree.cmd"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent runminimized shellexec
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\worker"
+Type: filesandordirs; Name: "{app}\app"
 
 [Messages]
 italiano.WelcomeLabel2=Verra' installato {#AppName} sul tuo computer.%n%nAl primo avvio il programma scarica l'ambiente di calcolo (circa 3 GB) e, alla prima generazione, il modello Qwen-Image-2.1 (circa 33 GB). Servono quindi circa 40 GB liberi e una connessione veloce.

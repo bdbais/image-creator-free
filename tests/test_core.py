@@ -10,6 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "worker"))
 
+# I test salvano impostazioni: mai in quelle vere dell'utente.
+import tempfile  # noqa: E402
+
+os.environ["ICF_DATA_DIR"] = tempfile.mkdtemp(prefix="icf-test-")
+
 from imagecreator.core import config, presets  # noqa: E402
 
 

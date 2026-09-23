@@ -1,0 +1,182 @@
+{
+  "version": 1,
+  "note": "Esempi scritti per Image Creator Free: scene complesse e restauro di foto. Nel restauro la prima immagine è la foto da restaurare, le altre sono foto della stessa persona usate solo come riferimento per il volto.",
+  "presets": [
+    {
+      "id": "restauro-bn-piu-foto",
+      "group": "Restauro foto",
+      "title_it": "Restauro B/N con altre foto della persona",
+      "title_en": "B/W restoration with extra photos of the same person",
+      "mode": "edit",
+      "refs": 3,
+      "aspect": "3:4",
+      "prompt": "Restore the old black-and-white photograph in <image1>. <image2> and <image3> show the same person at a similar age: use them only as identity references to reconstruct the true shape of the face, eyes, nose, mouth, ears and hairline where <image1> is damaged, blurred or missing. Remove scratches, cracks, dust, stains, mould spots, fold lines and torn edges; fill the missing areas seamlessly. Keep the result black and white with a natural silver-gelatin tonal range, fine film grain, the original lighting, pose, clothing, background and framing of <image1>. Do not beautify, do not change age or expression, do not add details that are not supported by the reference photos.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "restauro-bn-colore-piu-foto",
+      "group": "Restauro foto",
+      "title_it": "Restauro e colorazione con più foto",
+      "title_en": "Restore and colorize with several photos",
+      "mode": "edit",
+      "refs": 3,
+      "aspect": "3:4",
+      "prompt": "Restore and naturally colorize the damaged vintage black-and-white portrait in <image1>. Use <image2> and <image3>, which show the same person, as identity references to recover the exact facial features, eye shape, skin texture, hairline and hair colour where <image1> is faded or damaged; if a reference is in colour, match skin tone, eye colour and hair colour to it. Remove scratches, dust, creases, water stains and missing emulsion, rebuild the damaged regions seamlessly, and sharpen the image to a clean high-resolution photograph. Colours must look like a real period photograph: soft, slightly muted, historically plausible clothing and background colours, no oversaturation. Keep pose, expression, clothing, background and composition of <image1> unchanged.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "restauro-strappata",
+      "group": "Restauro foto",
+      "title_it": "Foto strappata: ricostruisci la parte mancante",
+      "title_en": "Torn photo: rebuild the missing part",
+      "mode": "edit",
+      "refs": 2,
+      "aspect": "3:4",
+      "prompt": "The old photograph in <image1> is torn and a piece is missing, cutting through part of the person's face and shoulder. Rebuild the missing piece so the photograph looks whole again, using the person in <image2> as the identity reference for the face that must appear in the missing area. Continue the background, clothing folds and lighting of <image1> across the tear without visible seams, remove the white paper fibres along the tear line, flatten the creases and clean dust and scratches. Keep the original tones of <image1> (black and white or sepia, as in the original), its grain and its framing. The rest of the photograph must stay exactly as it is.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "restauro-volto-sfocato",
+      "group": "Restauro foto",
+      "title_it": "Volto sfocato o mosso: rendilo nitido",
+      "title_en": "Blurry face: make it sharp",
+      "mode": "edit",
+      "refs": 3,
+      "aspect": "1:1",
+      "prompt": "The face in <image1> is out of focus and slightly motion-blurred. Using <image2> and <image3> as reference photos of the same person, reconstruct a sharp, detailed and faithful version of the face in <image1>: correct eye shape and iris detail, eyebrows, eyelashes, nose, lips, teeth, skin pores and hair strands, consistent with the references. Keep the head angle, expression, lighting direction, colours, clothing, background and composition of <image1> exactly the same. Do not smooth the skin, do not apply makeup, do not change age. Only increase clarity and fine detail.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "restauro-famiglia",
+      "group": "Restauro foto",
+      "title_it": "Foto di famiglia rovinata, un volto per riferimento",
+      "title_en": "Damaged family photo with one reference per face",
+      "mode": "edit",
+      "refs": 4,
+      "aspect": "4:3",
+      "prompt": "Restore the damaged old family group photograph in <image1>. The three people in it also appear individually in <image2> (the person on the left), <image3> (the person in the middle) and <image4> (the person on the right): use each reference only to reconstruct that person's face faithfully where <image1> is blurred, cracked or faded. Remove scratches, dust, stains, fold marks and the yellow cast, recover contrast and detail, and upscale to a clean high-resolution print. Keep the original black-and-white or sepia tones, the pose of every person, their clothing, the background and the framing of <image1>. Do not swap faces between people and do not add or remove anyone.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "restauro-sbiadita-colori",
+      "group": "Restauro foto",
+      "title_it": "Foto a colori sbiadita anni '70",
+      "title_en": "Faded 1970s colour photo",
+      "mode": "edit",
+      "refs": 1,
+      "aspect": "4:3",
+      "prompt": "Restore this faded 1970s colour print. Remove the strong magenta and yellow cast, bring back natural skin tones, blue sky and green vegetation, recover the lost contrast in the shadows and the detail in the highlights. Clean dust, scratches and the paper texture, reduce the chemical stains in the corners, and sharpen gently without making it look digital. Keep the warm character of an analogue photo, the original composition, people, clothing and background.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "restauro-bn-solo",
+      "group": "Restauro foto",
+      "title_it": "Restauro B/N di una sola foto (senza colore)",
+      "title_en": "Single B/W restoration, no colour",
+      "mode": "edit",
+      "refs": 1,
+      "aspect": "3:4",
+      "prompt": "Restore this old black-and-white photograph without colorizing it. Remove scratches, cracks, dust, spots, foxing, creases and the torn corner; rebuild the missing corner by continuing the background. Recover deep blacks, clean whites and a full grey scale, reduce heavy grain while keeping a fine natural film texture, and increase the resolution. Keep faces, expressions, pose, clothing, background and composition exactly as in the original; do not invent new details.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-mercato-napoli",
+      "group": "Scene complesse",
+      "title_it": "Mercato notturno con insegne scritte",
+      "title_en": "Night market with written signs",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "16:9",
+      "prompt": "Cinematic wide shot of a crowded night street market in an old Italian port city after the rain. Narrow alley with washing lines between baroque balconies, strings of warm bulbs, wet cobblestones reflecting neon. Left: a fish stall with a hand-painted wooden sign that reads \"PESCHERIA DA TOTÒ\" and ice trays of anchovies and octopus. Centre: a lemon stall with a chalkboard that reads \"LIMONI DI AMALFI - 3 € AL KG\". Right: a small café with a red neon sign that reads \"BAR ESPRESSO\" and two old men playing cards at a tin table. Background: a scooter with a delivery box, a church dome lit in orange, light fog. Shot on 35mm, shallow depth of field, rich colour contrast between warm tungsten and cyan neon, realistic textures, every sign perfectly legible.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-infografica-ricetta",
+      "group": "Scene complesse",
+      "title_it": "Infografica di una ricetta in italiano",
+      "title_en": "Italian recipe infographic",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "3:4",
+      "prompt": "A clean editorial recipe infographic poster in Italian on warm off-white paper. Title at the top in a bold serif font: \"Carbonara come a Roma\". Subtitle: \"4 persone · 20 minuti\". Left column titled \"Ingredienti\" with small watercolour illustrations and labels: \"320 g spaghetti\", \"150 g guanciale\", \"4 tuorli\", \"80 g pecorino romano\", \"pepe nero\". Right column titled \"Procedimento\" with five numbered steps in short sentences, each with a small line icon: \"1. Taglia il guanciale a listarelle\", \"2. Rosolalo senza olio\", \"3. Sbatti tuorli e pecorino\", \"4. Scola la pasta al dente\", \"5. Manteca fuori dal fuoco\". Bottom: a top-down photo-realistic plate of carbonara on a linen napkin. Balanced grid layout, generous margins, muted terracotta and olive colour palette, all text sharp and correctly spelled.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-fumetto-quattro-vignette",
+      "group": "Scene complesse",
+      "title_it": "Fumetto in 4 vignette con dialoghi",
+      "title_en": "Four-panel comic with dialogue",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "3:4",
+      "prompt": "A four-panel comic strip in a 2x2 grid with thin black borders and white gutters, European ligne claire style, flat colours. The same two characters in every panel: a tall grey-haired grandmother in a green cardigan and a small boy in a yellow raincoat. Panel 1: kitchen, the boy holds a tablet, speech bubble \"Nonna, l'intelligenza artificiale sa cucinare?\". Panel 2: the grandmother raises an eyebrow while rolling pasta dough, bubble \"Sa scrivere la ricetta.\". Panel 3: close-up of her floury hands shaping tortellini, bubble \"Ma le mani ce le metto io.\". Panel 4: both at the table eating, the tablet forgotten on a chair, caption box at the bottom \"Domenica, ore 13\". Consistent faces and clothes across panels, clear readable lettering in the bubbles.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-mappa-isometrica",
+      "group": "Scene complesse",
+      "title_it": "Mappa isometrica di un borgo con etichette",
+      "title_en": "Isometric village map with labels",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "1:1",
+      "prompt": "Detailed isometric illustration of a small Italian hill village seen from above at a 30-degree angle, soft pastel colours and crisp shading like a high-end tourism map. A medieval tower on the hilltop labelled \"Torre Civica\", a piazza with a fountain labelled \"Piazza Grande\", a church labelled \"San Michele\", vineyards on terraced slopes labelled \"Vigneti\", a winding road with a small red bus, a train station at the bottom labelled \"Stazione\", and a river with a stone bridge labelled \"Ponte Vecchio\". Tiny people, cafés with umbrellas, cypress trees, clean white labels with thin leader lines, a compass rose in the corner and a title banner \"Benvenuti a Montefiore\".",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-copertina-rivista",
+      "group": "Scene complesse",
+      "title_it": "Copertina di rivista con più titoli",
+      "title_en": "Magazine cover with several headlines",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "3:4",
+      "prompt": "A realistic travel magazine cover. Masthead at the top in large condensed letters: \"ORIZZONTI\". Issue line under it: \"N. 42 · Settembre 2026 · 6,90 €\". Cover photo: a woman in a linen dress walking along a sunlit Sicilian stone staircase covered in bougainvillea, looking back over her shoulder, golden-hour light. Headlines around her: large main headline \"Sicilia lenta\" with the subtitle \"7 giorni tra barocco e mare\"; left column \"Treni panoramici d'Europa\", \"Dormire in un faro\", \"La guida ai mercati\"; a round yellow badge \"SPECIALE ESTATE\". Barcode in the lower right. Professional magazine typography, hierarchy of font sizes, everything spelled correctly and not overlapping the face.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-pubblicita-aperitivo",
+      "group": "Scene complesse",
+      "title_it": "Pubblicità di un aperitivo in spiaggia",
+      "title_en": "Beach aperitivo advertisement",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "3:4",
+      "prompt": "A glossy summer advertising photograph. A smiling woman in her thirties sits at a small white table at a beach bar, wearing a wide straw hat, a patterned swimsuit and a sheer floral summer cover-up. She raises a large wine glass of bright orange spritz with ice and an orange slice toward the camera. Background: turquoise sea, striped umbrellas, soft bokeh, late-afternoon backlight creating a warm rim light on her hair and on the glass with condensation droplets. Headline at the top in elegant white serif letters: \"L'estate ha il suo colore\". Small tagline at the bottom: \"Bevi responsabilmente\". Fresh, high-end, natural skin, realistic hands holding the glass.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-menu-lavagna",
+      "group": "Scene complesse",
+      "title_it": "Menù su lavagna con prezzi",
+      "title_en": "Chalkboard menu with prices",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "2:3",
+      "prompt": "A photo of a real chalkboard menu hanging on a brick wall in a cosy trattoria, hand-drawn in white and coloured chalk with small doodles of basil, tomatoes and a wine bottle. Title: \"Menù del giorno\". Section \"Primi\": \"Tagliatelle al ragù - 12 €\", \"Risotto ai funghi porcini - 14 €\". Section \"Secondi\": \"Saltimbocca alla romana - 16 €\", \"Branzino al forno - 18 €\". Section \"Dolci\": \"Tiramisù della casa - 6 €\". Bottom line: \"Coperto 2 € · Acqua e pane inclusi\". Chalk dust, slight smudges, warm light from a pendant lamp, every word readable and correctly aligned with its price.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-interno-architettura",
+      "group": "Scene complesse",
+      "title_it": "Interno di architettura con luce naturale",
+      "title_en": "Architectural interior in natural light",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "16:9",
+      "prompt": "Architectural photograph of a renovated stone farmhouse living room in Tuscany. Exposed chestnut ceiling beams, lime-washed walls, large arched window opening onto olive groves, low morning sun casting long rectangular light patches across a terracotta floor. A deep linen sofa in oat colour, a low travertine coffee table with a stack of books and a ceramic vase with dried wheat, a vintage leather armchair, a fireplace with a stone mantel. Shot with a tilt-shift lens at eye level, vertical lines perfectly straight, soft realistic shadows, quiet and minimal, magazine quality.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "complessa-ritratto-prodotto-riferimenti",
+      "group": "Scene complesse",
+      "title_it": "Persona e prodotto da due immagini",
+      "title_en": "Person and product from two images",
+      "mode": "edit",
+      "refs": 2,
+      "aspect": "3:4",
+      "prompt": "Create a lifestyle advertising photo using the person in <image1> as the identity reference and the product in <image2> exactly as it is (same shape, colours, label text and logo). The person sits at a sunny café terrace by the sea, holding the product naturally near the face and smiling at the camera. Keep face, hairstyle and body proportions of <image1>; keep every detail of the product of <image2> readable and undistorted. Warm afternoon light, shallow depth of field, realistic hands, magazine-quality colour grading.",
+      "source": "image-creator-free"
+    }
+  ]
+}

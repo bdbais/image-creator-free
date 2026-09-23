@@ -9,16 +9,18 @@ from collections import deque
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QUrl
-from PySide6.QtGui import QAction, QDesktopServices, QGuiApplication, QPixmap
+from PySide6.QtGui import (
+    QAction, QDesktopServices, QGuiApplication, QIcon, QImageReader, QPixmap,
+)
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout,
+    QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout, QInputDialog,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
     QPlainTextEdit, QProgressBar, QPushButton, QSpinBox, QSplitter, QTabWidget,
     QVBoxLayout, QWidget,
 )
 
 from .. import APP_NAME, MODEL_ID, __version__
-from ..core import config, history, presets as presets_mod, runtime
+from ..core import config, history, presets as presets_mod, projects, runtime
 from ..core.worker_client import WorkerClient
 from .refs import ReferenceStrip
 from .settings_dialog import SettingsDialog
@@ -42,6 +44,11 @@ class MainWindow(QMainWindow):
         self.log_lines: deque[str] = deque(maxlen=3000)
         self.seen_progress = False
         self.log_dialog = None
+        self.project: projects.Project | None = None
+        # Il lavoro in corso appartiene al progetto da cui e' partito, anche se
+        # nel frattempo se ne apre un altro.
+        self.job_project = ""
+        self.job_params: dict = {}
 
         self.setWindowTitle("%s - Qwen-Image-2.1 in locale" % APP_NAME)
         self.resize(1360, 900)
@@ -49,7 +56,7 @@ class MainWindow(QMainWindow):
         self._build_menu()
         self._build_ui()
         self._connect_worker()
-        self._load_history()
+        self._fill_projects(self.settings.current_project)
         self._update_generate_state()
 
     # =================================================================== interfaccia
@@ -57,6 +64,16 @@ class MainWindow(QMainWindow):
         bar = self.menuBar()
 
         file_menu = bar.addMenu("&File")
+        for label, shortcut, slot in (("Nuovo progetto...", "Ctrl+N", self.new_project),
+                                      ("Duplica il progetto...", "Ctrl+D", self.clone_project),
+                                      ("Rinomina il progetto...", "F2", self.rename_project),
+                                      ("Elimina il progetto...", "", self.delete_project)):
+            act = QAction(label, self)
+            if shortcut:
+                act.setShortcut(shortcut)
+            act.triggered.connect(slot)
+            file_menu.addAction(act)
+        file_menu.addSeparator()
         act = QAction("Apri la cartella delle immagini", self)
         act.triggered.connect(lambda: self._open_path(self.settings.out_path()))
         file_menu.addAction(act)
@@ -101,7 +118,10 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self):
         splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self._examples_panel())
+        self.side_tabs = QTabWidget()
+        self.side_tabs.addTab(self._projects_panel(), "Progetti")
+        self.side_tabs.addTab(self._examples_panel(), "Esempi")
+        splitter.addWidget(self.side_tabs)
         splitter.addWidget(self._center_panel())
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
@@ -114,6 +134,216 @@ class MainWindow(QMainWindow):
         self.gpu_label = QLabel(self._gpu_summary())
         self.status.addPermanentWidget(self.gpu_label)
 
+    # ---------------------------------------------------------------- progetti
+    def _projects_panel(self) -> QWidget:
+        panel = QWidget()
+        box = QVBoxLayout(panel)
+        box.setContentsMargins(12, 12, 6, 12)
+        box.setSpacing(8)
+
+        subtitle = QLabel("Ogni progetto ricorda prompt, parametri e immagini. "
+                          "Duplicalo per provare varianti senza toccare l'originale.")
+        subtitle.setObjectName("muted")
+        subtitle.setWordWrap(True)
+        box.addWidget(subtitle)
+
+        self.project_list = QListWidget()
+        self.project_list.setIconSize(QSize(48, 48))
+        self.project_list.itemSelectionChanged.connect(self._on_project_selected)
+        self.project_list.itemDoubleClicked.connect(lambda *_: self.rename_project())
+        box.addWidget(self.project_list, 1)
+
+        row = QHBoxLayout()
+        for label, tip, slot in (("Nuovo", "Ctrl+N", self.new_project),
+                                 ("Duplica", "Stessi parametri in un progetto nuovo (Ctrl+D)",
+                                  self.clone_project),
+                                 ("Rinomina", "F2", self.rename_project),
+                                 ("Elimina", "", self.delete_project)):
+            btn = QPushButton(label)
+            btn.setToolTip(tip)
+            btn.clicked.connect(slot)
+            row.addWidget(btn)
+        box.addLayout(row)
+        return panel
+
+    def _fill_projects(self, select_id: str | None = None):
+        """Ricostruisce l'elenco; la prima voce mostra tutte le immagini."""
+        if select_id is None:
+            select_id = self.project.id if self.project else ""
+        self.project_list.blockSignals(True)
+        self.project_list.clear()
+        tutte = QListWidgetItem("Tutte le immagini")
+        tutte.setData(Qt.UserRole, "")
+        self.project_list.addItem(tutte)
+        scelto = tutte
+        for project in projects.list_all():
+            item = QListWidgetItem(self._project_caption(project))
+            item.setData(Qt.UserRole, project.id)
+            item.setToolTip(project.params.get("prompt", "")[:300])
+            icon = _thumbnail(project.cover, 96)
+            if icon is not None:
+                item.setIcon(icon)
+            self.project_list.addItem(item)
+            if project.id == select_id:
+                scelto = item
+        self.project_list.setCurrentItem(scelto)
+        self.project_list.blockSignals(False)
+        self._on_project_selected()
+
+    @staticmethod
+    def _project_caption(project: projects.Project) -> str:
+        n = len(projects.images_on_disk(project))
+        quando = project.updated[:16].replace("-", "/")
+        return "%s\n%s · %s" % (project.name, "1 immagine" if n == 1
+                                else "%d immagini" % n, quando)
+
+    def _on_project_selected(self):
+        items = self.project_list.selectedItems()
+        if not items:
+            return
+        project_id = items[0].data(Qt.UserRole)
+        if self.project and project_id == self.project.id:
+            return
+        self._store_form_in_project()
+        self.project = projects.load(project_id) if project_id else None
+        if self.project:
+            self._apply_params(self.project.params)
+        self.settings.current_project = self.project.id if self.project else ""
+        self._update_project_label()
+        self._fill_gallery()
+
+    def _update_project_label(self):
+        if self.project:
+            origine = ""
+            if self.project.parent:
+                padre = projects.load(self.project.parent)
+                if padre:
+                    origine = " · copia di «%s»" % padre.name
+            self.project_label.setText("Progetto: <b>%s</b>%s" % (
+                _html(self.project.name), _html(origine)))
+        else:
+            self.project_label.setText(
+                "Nessun progetto aperto: alla prima generazione ne creo uno.")
+
+    def _form_params(self) -> dict:
+        seed_text = self.seed_edit.text().strip()
+        try:
+            seed = int(seed_text) if seed_text else None
+        except ValueError:
+            seed = None
+        return {
+            "prompt": self.prompt_edit.toPlainText().strip(),
+            "negative_prompt": self.negative_edit.text().strip(),
+            "aspect": self.aspect_box.currentText(),
+            "quality": self.quality_box.currentData() or "standard",
+            "steps": self.steps_spin.value(),
+            "true_cfg_scale": self.cfg_spin.value(),
+            "seed": seed,
+            "batch": self.batch_spin.value(),
+            "refs": self.refs.paths(),
+        }
+
+    def _apply_params(self, params: dict):
+        self.prompt_edit.setPlainText(params.get("prompt", ""))
+        self.negative_edit.setText(params.get("negative_prompt", ""))
+        if params.get("aspect") in config.ASPECT_RATIOS:
+            self.aspect_box.setCurrentText(params["aspect"])
+        index = self.quality_box.findData(params.get("quality"))
+        if index >= 0:
+            self.quality_box.setCurrentIndex(index)
+        self.steps_spin.setValue(int(params.get("steps") or 0))
+        self.cfg_spin.setValue(float(params.get("true_cfg_scale") or 4.0))
+        seed = params.get("seed")
+        self.seed_edit.setText("" if seed is None else str(seed))
+        self.batch_spin.setValue(int(params.get("batch") or 1))
+        self.refs.clear()
+        self.refs.add_paths([p for p in params.get("refs") or [] if Path(p).exists()])
+
+    def _store_form_in_project(self):
+        """Il modulo appartiene al progetto aperto: le modifiche restano sue."""
+        if self.project is None:
+            return
+        params = self._form_params()
+        if params != self.project.params:
+            self.project.params = params
+            projects.save(self.project)
+
+    def new_project(self):
+        nome, ok = QInputDialog.getText(self, "Nuovo progetto", "Nome del progetto:")
+        if not ok:
+            return
+        self._store_form_in_project()
+        # Parte dal modulo vuoto, ma tiene formato, qualità e impostazioni avanzate.
+        params = self._form_params()
+        params.update(prompt="", negative_prompt="", seed=None, refs=[])
+        project = projects.create(nome.strip() or "Progetto senza nome", params)
+        self.project = None
+        self._fill_projects(project.id)
+        self.prompt_edit.setFocus()
+
+    def clone_project(self):
+        self._clone(None)
+
+    def _clone(self, params: dict | None, nome: str = ""):
+        """Copia il progetto aperto (o i parametri dati) in uno nuovo e lo apre."""
+        if self.project is None and params is None:
+            if not self._form_params()["prompt"]:
+                self.status_label.setText("Apri un progetto da duplicare.")
+                return
+        self._store_form_in_project()
+        base_name = self.project.name if self.project else \
+            projects.name_from_prompt(self._form_params()["prompt"])
+        nome, ok = QInputDialog.getText(
+            self, "Duplica il progetto",
+            "Nome della copia (i parametri si possono cambiare prima di generare):",
+            text=nome or "%s (copia)" % base_name)
+        if not ok:
+            return
+        sorgente = self.project or projects.Project(
+            id="", name=base_name, created="", updated="", params=self._form_params())
+        copia = projects.clone(sorgente, nome, params)
+        self.project = None
+        self._fill_projects(copia.id)
+        self.tabs.setCurrentIndex(0)
+        self.status_label.setText(
+            "Copia creata: cambia i parametri che vuoi e premi Genera.")
+
+    def rename_project(self):
+        if self.project is None:
+            return
+        nome, ok = QInputDialog.getText(self, "Rinomina il progetto", "Nuovo nome:",
+                                        text=self.project.name)
+        if ok and nome.strip():
+            self._store_form_in_project()
+            projects.rename(self.project, nome)
+            self._fill_projects(self.project.id)
+            self._update_project_label()
+
+    def delete_project(self):
+        if self.project is None:
+            return
+        n = len(projects.images_on_disk(self.project))
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle("Elimina il progetto")
+        box.setText("Tolgo «%s» dall'elenco?" % self.project.name)
+        cancella = None
+        if n:
+            box.setInformativeText(
+                "Le immagini restano nella cartella del progetto, a meno che tu non "
+                "scelga di cancellarle.")
+            cancella = QCheckBox("Cancella anche %s" % (
+                "l'immagine" if n == 1 else "le %d immagini" % n))
+            box.setCheckBox(cancella)
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        box.setDefaultButton(QMessageBox.No)
+        if box.exec() != QMessageBox.Yes:
+            return
+        projects.delete(self.project, with_images=bool(cancella and cancella.isChecked()))
+        self.project = None
+        self.settings.current_project = ""
+        self._fill_projects("")
+
     # ---------------------------------------------------------------- esempi
     def _examples_panel(self) -> QWidget:
         panel = QWidget()
@@ -121,11 +351,12 @@ class MainWindow(QMainWindow):
         box.setContentsMargins(12, 12, 6, 12)
         box.setSpacing(8)
 
-        title = QLabel("Esempi ufficiali")
+        title = QLabel("Esempi")
         title.setObjectName("h1")
         box.addWidget(title)
 
-        subtitle = QLabel("Prompt presi dalla scheda del modello e dalla demo di Qwen.")
+        subtitle = QLabel("I prompt che hai gia' usato, restauro di foto, scene complesse "
+                          "e gli esempi ufficiali di Qwen.")
         subtitle.setObjectName("muted")
         subtitle.setWordWrap(True)
         box.addWidget(subtitle)
@@ -156,7 +387,8 @@ class MainWindow(QMainWindow):
     def _fill_examples(self):
         needle = self.search.text().strip().lower()
         self.example_list.clear()
-        for group, items in presets_mod.grouped(self.presets).items():
+        tutti = presets_mod.from_history() + self.presets
+        for group, items in presets_mod.grouped(tutti).items():
             visible = [p for p in items
                        if not needle or needle in p.title_it.lower()
                        or needle in p.title_en.lower() or needle in p.prompt.lower()]
@@ -202,6 +434,10 @@ class MainWindow(QMainWindow):
         box = QVBoxLayout(panel)
         box.setContentsMargins(6, 12, 12, 12)
         box.setSpacing(10)
+
+        self.project_label = QLabel()
+        self.project_label.setTextFormat(Qt.RichText)
+        box.addWidget(self.project_label)
 
         self.prompt_edit = QPlainTextEdit()
         self.prompt_edit.setPlaceholderText(
@@ -359,9 +595,10 @@ class MainWindow(QMainWindow):
         box.addWidget(self.gallery)
 
         actions = QHBoxLayout()
-        for label, slot in (("Apri la cartella", lambda: self._open_path(self.settings.out_path())),
+        for label, slot in (("Apri la cartella", self._open_images_folder),
                             ("Copia il prompt", self.copy_prompt_of_selected),
-                            ("Riusa i parametri", self.reuse_selected)):
+                            ("Riusa i parametri", self.reuse_selected),
+                            ("Nuovo progetto da questa immagine", self.clone_from_selected)):
             btn = QPushButton(label)
             btn.clicked.connect(slot)
             actions.addWidget(btn)
@@ -416,31 +653,48 @@ class MainWindow(QMainWindow):
         quality = self.quality_box.currentData()
         steps = self.steps_spin.value() or config.QUALITY[quality]["steps"]
         width, height = config.resolution_for(self.aspect_box.currentText(), quality)
-        refs = self.refs.paths()
 
         if not self._conferma_se_troppo_grande(width, height):
             return
+        if not self.client.model_loaded and not self._conferma_memoria():
+            return
 
-        seed_text = self.seed_edit.text().strip()
-        try:
-            seed = int(seed_text) if seed_text else None
-        except ValueError:
-            seed = None
+        # Ogni generazione appartiene a un progetto: se non ce n'e' uno aperto,
+        # nasce adesso con il nome preso dal prompt.
+        params = self._form_params()
+        nuovo = self.project is None
+        if nuovo:
+            self.project = projects.create(projects.name_from_prompt(prompt), params)
+        else:
+            self.project.params = params
+        refs = projects.keep_refs(self.project, self.settings)
+        params["refs"] = refs
+        projects.save(self.project)
+        if refs != self.refs.paths():
+            self.refs.clear()
+            self.refs.add_paths(refs)
+        if nuovo:
+            self.settings.current_project = self.project.id
+            self._fill_projects(self.project.id)
+            self._update_project_label()
+            self._fill_gallery()
 
         self._save_form()
         request = {
             "prompt": prompt,
-            "negative_prompt": self.negative_edit.text().strip(),
+            "negative_prompt": params["negative_prompt"],
             "steps": steps,
-            "true_cfg_scale": self.cfg_spin.value(),
-            "seed": seed,
-            "batch": self.batch_spin.value(),
+            "true_cfg_scale": params["true_cfg_scale"],
+            "seed": params["seed"],
+            "batch": params["batch"],
             "images": refs,
             "width": width,
             "height": height,
-            "out_dir": str(self.settings.out_path()),
+            "out_dir": str(projects.output_dir(self.project, self.settings)),
             "basename": time.strftime("%Y%m%d-%H%M%S"),
         }
+        self.job_project = self.project.id
+        self.job_params = params
         self.pending = self.batch_spin.value()
         self.seen_progress = False
         self.job_started = time.time()
@@ -471,12 +725,32 @@ class MainWindow(QMainWindow):
             self, "Risoluzione oltre la portata della scheda",
             "Con %s GB di VRAM una immagine %dx%d di solito finisce la memoria: "
             "sulla RTX 4070 provata durante lo sviluppo si ferma dopo una ventina "
-            "di minuti.
-
-Fino a %dx%d funziona.
-
-Provo lo stesso?"
+            "di minuti.\n\nFino a %dx%d funziona.\n\nProvo lo stesso?"
             % (vram, width, height, limite, limite),
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        return risposta == QMessageBox.Yes
+
+    def _memoria_per_il_modello(self) -> tuple[float, float]:
+        """(GB che servono, GB liberi): il modello passa tutto dalla RAM."""
+        serve = runtime.model_size_on_disk(self.settings, self.settings.model_id)
+        return serve + 2 if serve else 0.0, config.free_memory_gb()
+
+    def _testo_memoria(self, serve: float, libera: float) -> str:
+        return (
+            "Per caricare il modello servono circa %.0f GB di memoria (RAM più file "
+            "di paging) e ora ne sono liberi %.0f GB.\n\nChiudi i programmi che ne "
+            "usano molta (emulatori, macchine virtuali, browser con tante schede) "
+            "oppure aumenta il file di paging di Windows su un disco con spazio "
+            "libero." % (serve, libera))
+
+    def _conferma_memoria(self) -> bool:
+        """Se la memoria non basta il processo muore senza messaggi: lo si dice prima."""
+        serve, libera = self._memoria_per_il_modello()
+        if not serve or not libera or libera >= serve:
+            return True
+        risposta = QMessageBox.question(
+            self, "Memoria insufficiente",
+            self._testo_memoria(serve, libera) + "\n\nProvo lo stesso?",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         return risposta == QMessageBox.Yes
 
@@ -514,9 +788,20 @@ Provo lo stesso?"
             "elapsed": event.get("elapsed"),
             "meta": event.get("meta", {}),
         }
+        entry["project"] = self.job_project
         history.add(entry)
-        self._add_gallery_item(entry, select=True)
         self.pending = max(0, self.pending - 1)
+        progetto = projects.load(self.job_project) if self.job_project else None
+        if progetto is not None:
+            params = dict(self.job_params, seed=entry.get("seed"))
+            projects.add_image(progetto, entry, params)
+            entry = progetto.images[-1]
+            if self.project and self.project.id == progetto.id:
+                self.project.images = progetto.images
+        # In galleria solo se si sta guardando quel progetto (o tutte le immagini).
+        if self.project is None or self.project.id == self.job_project:
+            self._add_gallery_item(entry, select=True)
+        self._refresh_project_item(self.job_project)
 
     def on_done(self, _event: dict):
         self.bar.setVisible(False)
@@ -529,6 +814,7 @@ Provo lo stesso?"
             self.status_label.setText("Generazione annullata.")
         else:
             self.status_label.setText("Fatto in %d secondi." % int(elapsed))
+            self._fill_examples()     # il prompt appena usato entra tra "I tuoi prompt"
         if not self.keep_box.isChecked():
             self.client.stop()
 
@@ -590,23 +876,57 @@ Provo lo stesso?"
         if code not in (0, 62097):
             self.status_label.setText(
                 "Il processo di generazione si è chiuso (codice %s)." % code)
+        if code in (0xC0000005, -0x3FFFFFFB):
+            # Accesso non valido in torch: in pratica, memoria finita durante il carico.
+            serve, libera = self._memoria_per_il_modello()
+            QMessageBox.warning(
+                self, "La generazione si è interrotta",
+                "Il processo di generazione si è chiuso all'improvviso "
+                "(0xC0000005). Di solito succede quando la memoria non basta.\n\n"
+                + (self._testo_memoria(serve, libera) if serve else ""))
 
     # =================================================================== galleria
-    def _load_history(self):
-        for entry in reversed(history.load(60)):
+    def _fill_gallery(self):
+        """Le immagini del progetto aperto, oppure le ultime generate in assoluto."""
+        self.gallery.clear()
+        self.preview.clear()
+        self.meta_label.setText("")
+        if self.project is not None:
+            entries = projects.images_on_disk(self.project)
+            if not entries:
+                self.preview.setText("Questo progetto non ha ancora immagini: premi Genera.")
+        else:
+            entries = list(reversed(history.load(60)))
+            if not entries:
+                self.preview.setText("Le immagini generate compaiono qui.")
+        for entry in entries:
             self._add_gallery_item(entry, select=False)
         if self.gallery.count():
             self.gallery.setCurrentRow(self.gallery.count() - 1)
+
+    def _refresh_project_item(self, project_id: str):
+        """Aggiorna conteggio e miniatura di un progetto nell'elenco."""
+        project = projects.load(project_id) if project_id else None
+        if project is None:
+            return
+        for row in range(self.project_list.count()):
+            item = self.project_list.item(row)
+            if item.data(Qt.UserRole) == project_id:
+                item.setText(self._project_caption(project))
+                icon = _thumbnail(project.cover, 96)
+                if icon is not None:
+                    item.setIcon(icon)
+                return
 
     def _add_gallery_item(self, entry: dict, select: bool):
         path = entry.get("path", "")
         if not path or not Path(path).exists():
             return
-        pixmap = QPixmap(path)
-        if pixmap.isNull():
+        icon = _thumbnail(path, 208)
+        if icon is None:
             return
         item = QListWidgetItem()
-        item.setIcon(pixmap.scaled(208, 208, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        item.setIcon(icon)
         item.setToolTip(entry.get("meta", {}).get("prompt", "")[:300])
         item.setData(Qt.UserRole, entry)
         self.gallery.addItem(item)
@@ -642,17 +962,44 @@ Provo lo stesso?"
         QGuiApplication.clipboard().setText(entry.get("meta", {}).get("prompt", ""))
         self.status_label.setText("Prompt copiato negli appunti.")
 
+    def _params_of(self, entry: dict) -> dict:
+        """I parametri con cui e' nata un'immagine, seed compreso.
+
+        Le immagini dei progetti li hanno tutti; quelle piu' vecchie solo
+        quello che il worker ha scritto nei metadati.
+        """
+        if entry.get("params"):
+            params = dict(entry["params"])
+        else:
+            meta = entry.get("meta", {})
+            params = self._form_params()
+            params.update(prompt=meta.get("prompt", ""),
+                          negative_prompt=meta.get("negative_prompt", ""),
+                          steps=int(meta.get("steps") or 0), refs=[])
+            if meta.get("true_cfg_scale"):
+                params["true_cfg_scale"] = float(meta["true_cfg_scale"])
+        params["seed"] = entry.get("seed", params.get("seed"))
+        params["batch"] = 1
+        return params
+
     def reuse_selected(self):
         entry = self._selected_entry()
         if not entry:
             return
-        meta = entry.get("meta", {})
-        self.prompt_edit.setPlainText(meta.get("prompt", ""))
-        self.negative_edit.setText(meta.get("negative_prompt", ""))
-        self.seed_edit.setText(str(entry.get("seed", "")))
-        if meta.get("steps"):
-            self.steps_spin.setValue(int(meta["steps"]))
-        self.status_label.setText("Parametri ripresi dall'immagine selezionata.")
+        self._apply_params(self._params_of(entry))
+        self.status_label.setText(
+            "Parametri ripresi dall'immagine selezionata, seed compreso: cambia quello "
+            "che vuoi e premi Genera.")
+
+    def clone_from_selected(self):
+        """Nuovo progetto che parte esattamente da questa immagine."""
+        entry = self._selected_entry()
+        if not entry:
+            return
+        params = self._params_of(entry)
+        nome = "%s (variante)" % (self.project.name if self.project
+                                  else projects.name_from_prompt(params["prompt"]))
+        self._clone(params, nome)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -683,7 +1030,9 @@ Provo lo stesso?"
         self.settings.steps = self.steps_spin.value()
         self.settings.true_cfg_scale = self.cfg_spin.value()
         self.settings.keep_model_loaded = self.keep_box.isChecked()
+        self.settings.current_project = self.project.id if self.project else ""
         self.settings.save()
+        self._store_form_in_project()
 
     def open_settings(self):
         dialog = SettingsDialog(self.settings, self)
@@ -709,6 +1058,15 @@ Provo lo stesso?"
                 info.get("torch", "-"), info.get("diffusers", "-"),
                 self.settings.output_dir, DONATE_URL))
 
+    def _open_images_folder(self):
+        """La cartella del progetto aperto, se ha gia' immagini; altrimenti quella generale."""
+        if self.project is not None:
+            cartella = projects.output_dir(self.project, self.settings)
+            if cartella.exists():
+                self._open_path(cartella)
+                return
+        self._open_path(self.settings.out_path())
+
     @staticmethod
     def _open_path(path: Path):
         path = Path(path)
@@ -723,6 +1081,24 @@ Provo lo stesso?"
         self._save_form()
         self.client.stop()
         super().closeEvent(event)
+
+
+def _html(text: str) -> str:
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _thumbnail(path: str, size: int) -> QIcon | None:
+    """Miniatura letta gia' ridotta: le immagini sono da 2-3 megapixel."""
+    if not path or not Path(path).exists():
+        return None
+    reader = QImageReader(path)
+    original = reader.size()
+    if original.isValid() and original.width() and original.height():
+        scala = size / max(original.width(), original.height())
+        reader.setScaledSize(QSize(max(1, int(original.width() * scala)),
+                                   max(1, int(original.height() * scala))))
+    image = reader.read()
+    return None if image.isNull() else QIcon(QPixmap.fromImage(image))
 
 
 def _field(label: str, widget: QWidget, stretch: int = 0):

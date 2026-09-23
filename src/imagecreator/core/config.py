@@ -191,6 +191,7 @@ class Settings:
     accepted_license: bool = False
     torch_variant: str = "auto"       # auto | cu124 | cu121 | cpu
     recent_seeds: list[int] = field(default_factory=list)
+    current_project: str = ""         # id del progetto aperto all'ultima chiusura
 
     @classmethod
     def path(cls) -> Path:
@@ -280,7 +281,7 @@ def drive_media_type(path: Path) -> str:
     meccanico il solo caricamento richiede ore, quindi vale la pena avvisare
     prima che l'utente scelga dove metterlo.
     """
-    drive = str(Path(path).anchor).rstrip("\/")
+    drive = str(Path(path).anchor).rstrip("\\/")
     if not drive:
         return ""
     script = (
@@ -339,6 +340,34 @@ def best_models_dir() -> str:
         return ""
     _, _, drive = max(candidati)
     return str(drive / "ImageCreatorFree" / "modelli")
+
+
+def free_memory_gb() -> float:
+    """Memoria che si può ancora impegnare (RAM + file di paging), in GB.
+
+    Con lo scarico su CPU tutto il modello passa dalla RAM: se il sistema non
+    ha abbastanza memoria impegnabile, torch non segnala l'errore ma il
+    processo muore con 0xC0000005.
+    """
+    import ctypes
+
+    class _Stato(ctypes.Structure):
+        _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong), ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("ullAvailExtendedVirtual", ctypes.c_ulonglong)]
+
+    try:
+        stato = _Stato()
+        stato.dwLength = ctypes.sizeof(stato)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stato)):
+            return 0.0
+        return round(stato.ullAvailPageFile / 1024 ** 3, 1)
+    except (AttributeError, OSError):
+        return 0.0
 
 
 def free_disk_gb(path: Path) -> float:

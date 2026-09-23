@@ -35,6 +35,7 @@ TORCH_INDEX = {
 }
 
 BASE_PACKAGES = [
+    "PySide6>=6.7",          # la finestra gira con questo interprete
     "transformers>=5.17",
     "accelerate>=1.0",
     "safetensors",
@@ -70,7 +71,25 @@ def is_ready() -> bool:
         data = json.loads(marker_path().read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    return data.get("version") == RUNTIME_VERSION and data.get("ok") is True
+    if not (data.get("version") == RUNTIME_VERSION and data.get("ok") is True):
+        return False
+    # Gli ambienti creati prima della 1.0.1 non hanno PySide6: la finestra non
+    # potrebbe partire con questo interprete.
+    return (config.runtime_dir() / "Lib" / "site-packages" / "PySide6"
+            / "__init__.py").exists()
+
+
+def remember_location() -> None:
+    """Scrive dove sta l'ambiente, per il lanciatore ImageCreatorFree.cmd.
+
+    Il lanciatore è un file batch e non sa leggere settings.json: gli basta una
+    riga con la cartella.
+    """
+    try:
+        (config.data_dir() / "runtime.txt").write_text(
+            str(config.runtime_dir()), encoding="utf-8")
+    except OSError:
+        pass
 
 
 def installed_info() -> dict:
@@ -277,6 +296,7 @@ def install(log: Log, torch_variant: str = "auto",
     info = verify(log)
     info.update(version=RUNTIME_VERSION, ok=True, torch_variant=variant)
     marker_path().write_text(json.dumps(info, indent=2), encoding="utf-8")
+    remember_location()
     log("")
     log("Ambiente pronto.")
     return info
@@ -304,20 +324,30 @@ def verify(log: Log | None = None) -> dict:
         "except Exception: info['hf_xet']=False\n"
         "print(json.dumps(info))\n"
     )
-    try:
-        out = subprocess.run([str(python), "-c", code], capture_output=True,
-                             text=True, encoding="utf-8", errors="replace",
-                             timeout=600, creationflags=NO_WINDOW,
-                             stdin=subprocess.DEVNULL, env=clean_env())
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise RuntimeError_("Il runtime non risponde: %s" % exc)
-    line = (out.stdout or "").strip().splitlines()
+    if config.IS_FROZEN:
+        # Dall'eseguibile un figlio che importa torch e diffusers muore
+        # (0xC0000005): la verifica gira in un processo nato da explorer.
+        from . import lancio
+        script = config.data_dir() / "verifica.py"
+        script.write_text(code, encoding="utf-8")
+        codice, testo = lancio.esegui_da_explorer(
+            [str(python), str(script)], attesa=600, nome="verifica")
+        stdout = stderr = testo
+    else:
+        try:
+            out = subprocess.run([str(python), "-c", code], capture_output=True,
+                                 text=True, encoding="utf-8", errors="replace",
+                                 timeout=600, creationflags=NO_WINDOW,
+                                 stdin=subprocess.DEVNULL, env=clean_env())
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise RuntimeError_("Il runtime non risponde: %s" % exc)
+        codice, stdout, stderr = out.returncode, out.stdout, out.stderr
+    line = [r for r in (stdout or "").strip().splitlines() if r.startswith("{")]
     if not line:
         # Senza questi dettagli si legge solo "verifica fallita" e non si sa dove guardare.
         raise RuntimeError_(
             "Verifica fallita.\nInterprete: %s\nCodice di uscita: %s\n"
-            "Messaggi:\n%s" % (python, out.returncode,
-                               (out.stderr or "(nessuno)")[-2000:]))
+            "Messaggi:\n%s" % (python, codice, (stderr or "(nessuno)")[-2000:]))
     info = json.loads(line[-1])
     if log:
         log("Python %s | torch %s | CUDA %s | diffusers %s" % (

@@ -47,6 +47,8 @@ VSVersionInfo(
 "@ | Set-Content -Encoding UTF8 build/version_info.txt
 
 Write-Host "`n== PyInstaller ==" -ForegroundColor Cyan
+# Senza questa pulizia un build fallito lascerebbe passare l'eseguibile vecchio.
+Remove-Item "dist/ImageCreatorFree.exe", "dist/ImageCreatorFree" -Recurse -Force -ErrorAction SilentlyContinue
 python -m PyInstaller --noconfirm --clean ImageCreatorFree.spec
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller fallito" }
 
