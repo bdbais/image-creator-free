@@ -47,6 +47,31 @@ Funziona per cambiare uno sfondo, montare una foto di gruppo da più ritratti,
 arredare una stanza con oggetti fotografati da te. Quando ci sono riferimenti, il
 formato e la risoluzione li decide l'immagine di partenza.
 
+## Progetti
+
+Ogni generazione appartiene a un progetto. Se non ne hai aperto uno, il primo clic su
+*Genera* lo crea con le prime parole del prompt; lo trovi nella scheda *Progetti*.
+
+Un progetto ricorda prompt, prompt negativo, formato, qualità, passi, aderenza, seed,
+numero di immagini e immagini di riferimento, che vengono copiate nella sua cartella
+(`immagini\<progetto>\riferimenti`), così rigenerare funziona anche se sposti gli
+originali. Ogni immagine conserva i parametri con cui è nata.
+
+- **Duplica** (Ctrl+D): nuovo progetto con gli stessi parametri e nessuna immagine.
+  Cambia quello che vuoi e premi *Genera*: l'originale resta com'è.
+- **Nuovo progetto da questa immagine**: parte dall'immagine selezionata in galleria,
+  seed compreso, per fare varianti di un risultato riuscito.
+- **Elimina** toglie il progetto dall'elenco; le immagini restano su disco, a meno che
+  tu non scelga di cancellarle.
+- *Tutte le immagini*, in cima all'elenco, mostra le ultime generate da qualunque progetto.
+
+## Restaurare foto antiche
+
+Negli *Esempi*, gruppo *Restauro foto*. La prima immagine di riferimento è la foto da
+restaurare; le altre sono foto della **stessa persona**, usate solo per ricostruire il
+volto dove l'originale è rovinato, sfocato o mancante. Più sono simili per età e
+angolazione, meglio funziona. Si può restaurare restando in bianco e nero o colorare.
+
 ## Qualità, formati e memoria
 
 | Livello | Risoluzione (1:1) | Passi |
@@ -92,8 +117,8 @@ lo propone da sé e avvisa se scegli un disco a piatti.
 
 | Cosa | Dove |
 |---|---|
-| Immagini | `Immagini\Image Creator Free` (modificabile) |
-| Impostazioni e storico | `%LOCALAPPDATA%\ImageCreatorFree` |
+| Immagini | `Immagini\Image Creator Free`, una cartella per progetto (modificabile) |
+| Impostazioni, storico e progetti | `%LOCALAPPDATA%\ImageCreatorFree` |
 | Ambiente di calcolo | `%LOCALAPPDATA%\ImageCreatorFree\runtime` |
 | Modello | la cartella scelta al primo avvio |
 
@@ -115,6 +140,11 @@ generazione. Hugging Face tiene i file a metà nella stessa cartella.
 **La generazione sembra bloccata** — al primo avvio il caricamento del modello dal
 disco richiede minuti, specie con l'offload sequenziale. Il registro (Ctrl+L) dice
 sempre a che punto è.
+
+**Il processo di generazione si chiude da solo durante il caricamento** — la memoria
+non basta: il modello passa tutto dalla RAM e chiede circa 35 GB tra RAM e file di
+paging. Chiudi emulatori, macchine virtuali e browser pesanti, oppure aumenta il file
+di paging su un disco con spazio libero. Il programma avvisa prima di iniziare.
 
 **Windows SmartScreen blocca l'installer** — i file non sono firmati:
 *Ulteriori informazioni → Esegui comunque*. Le impronte SHA-256 sono pubblicate

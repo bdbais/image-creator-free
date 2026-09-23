@@ -45,6 +45,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\dist\ImageCreatorFree.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\ImageCreatorFree.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\ImageCreatorFree.pyw"; DestDir: "{app}\app"; Flags: ignoreversion
+Source: "..\CHANGELOG.md"; DestDir: "{app}\app"; Flags: ignoreversion
 Source: "..\src\imagecreator\*"; DestDir: "{app}\app\src\imagecreator"; Flags: ignoreversion recursesubdirs; Excludes: "__pycache__"
 Source: "..\worker\qwen_worker.py"; DestDir: "{app}\app\worker"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; Flags: ignoreversion

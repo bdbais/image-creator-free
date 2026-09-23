@@ -63,8 +63,13 @@ che la scheda non regge.
 - **Immagini trasparenti (RGBA)** native, per sticker e loghi ritagliati.
 - **Modifica di immagini**: fino a 10 riferimenti trascinati nella finestra, citabili nel
   prompt come *image 1*, *image 2*...
-- **40 esempi ufficiali** presi dalla scheda del modello e dalla demo Hugging Face di Qwen,
-  pronti da caricare con un clic.
+- **Progetti**: ogni progetto ricorda prompt, parametri, riferimenti e immagini. *Duplica*
+  per rigenerare con parametri diversi senza toccare l'originale, oppure crea un progetto
+  nuovo da una singola immagine, con il suo seed.
+- **Esempi**: i prompt che hai già usato, scene complesse, restauro di foto antiche o
+  rovinate (anche con più foto della stessa persona per ricostruire il volto) e i 40 esempi
+  ufficiali della scheda del modello e della demo Hugging Face di Qwen.
+- **Si aggiorna da solo**: all'avvio controlla se c'è una versione nuova e mostra le novità.
 - **Galleria locale** con seed, passi e parametri salvati dentro il PNG: "Riusa i parametri"
   rimette tutto com'era.
 - Tre livelli di qualità e quattro modalità di uso della memoria, per non finire la VRAM.

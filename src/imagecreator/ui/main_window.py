@@ -8,7 +8,7 @@ import time
 from collections import deque
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, QUrl
+from PySide6.QtCore import QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QAction, QDesktopServices, QGuiApplication, QIcon, QImageReader, QPixmap,
 )
@@ -19,9 +19,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget,
 )
 
-from .. import APP_NAME, MODEL_ID, __version__
+from .. import APP_NAME
 from ..core import config, history, presets as presets_mod, projects, runtime
 from ..core.worker_client import WorkerClient
+from . import aggiornamento
 from .refs import ReferenceStrip
 from .settings_dialog import SettingsDialog
 from .setup_dialog import SetupDialog
@@ -58,6 +59,8 @@ class MainWindow(QMainWindow):
         self._connect_worker()
         self._fill_projects(self.settings.current_project)
         self._update_generate_state()
+        # Controllo della versione poco dopo l'avvio, senza bloccare la finestra.
+        QTimer.singleShot(4000, self._check_update)
 
     # =================================================================== interfaccia
     def _build_menu(self):
@@ -112,7 +115,10 @@ class MainWindow(QMainWindow):
             act.triggered.connect(lambda _=False, u=url: QDesktopServices.openUrl(QUrl(u)))
             help_menu.addAction(act)
         help_menu.addSeparator()
-        act = QAction("Informazioni", self)
+        act = QAction("Controlla gli aggiornamenti...", self)
+        act.triggered.connect(self.show_about)
+        help_menu.addAction(act)
+        act = QAction("Informazioni e novità", self)
         act.triggered.connect(self.show_about)
         help_menu.addAction(act)
 
@@ -1044,19 +1050,25 @@ class MainWindow(QMainWindow):
                     "Le nuove impostazioni valgono al prossimo caricamento del modello.")
 
     def show_about(self):
-        info = runtime.installed_info()
-        QMessageBox.about(
-            self, "Informazioni",
-            "<b>%s</b> %s<br><br>"
-            "Interfaccia per <a href='%s'>%s</a> in locale.<br>"
-            "Codice: MIT · <a href='%s'>GitHub</a><br>"
-            "Pesi del modello: Qwen Research License (uso non commerciale).<br><br>"
-            "Runtime: torch %s · diffusers %s<br>"
-            "Immagini in: %s<br><br>"
-            "<a href='%s'>Sostieni il progetto</a>" % (
-                APP_NAME, __version__, MODEL_URL, MODEL_ID, REPO_URL,
-                info.get("torch", "-"), info.get("diffusers", "-"),
-                self.settings.output_dir, DONATE_URL))
+        dialog = aggiornamento.InfoDialog(self, SITE_URL, REPO_URL, MODEL_URL, DONATE_URL,
+                                          self.settings.output_dir)
+        dialog.setStyleSheet(self.styleSheet())
+        dialog.exec()
+
+    def _check_update(self):
+        self._controllo = aggiornamento.ControlloVersione(self)
+        self._controllo.trovata.connect(self._on_update_found)
+        self._controllo.start()        # senza rete: nessun messaggio
+
+    def _on_update_found(self, info: dict):
+        from ..core import aggiornamenti
+        if not aggiornamenti.piu_nuova(info.get("version", "")):
+            return
+        if self.client.busy:
+            self.status_label.setText(
+                "È disponibile la versione %s: Aiuto → Informazioni e novità." % info["version"])
+            return
+        aggiornamento.proponi(self, info)
 
     def _open_images_folder(self):
         """La cartella del progetto aperto, se ha gia' immagini; altrimenti quella generale."""

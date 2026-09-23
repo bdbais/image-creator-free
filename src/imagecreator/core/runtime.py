@@ -328,7 +328,7 @@ def verify(log: Log | None = None) -> dict:
         # Dall'eseguibile un figlio che importa torch e diffusers muore
         # (0xC0000005): la verifica gira in un processo nato da explorer.
         from . import lancio
-        script = config.data_dir() / "verifica.py"
+        script = lancio.cartella_temporanea() / "verifica.py"
         script.write_text(code, encoding="utf-8")
         codice, testo = lancio.esegui_da_explorer(
             [str(python), str(script)], attesa=600, nome="verifica")

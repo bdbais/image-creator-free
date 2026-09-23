@@ -12,6 +12,7 @@ datas = [
     ("src/imagecreator/data/presets_extra.json", "data"),
     ("src/imagecreator", "app/src/imagecreator"),
     ("ImageCreatorFree.pyw", "app"),
+    ("CHANGELOG.md", "app"),
     ("src/imagecreator/data/app.ico", "data"),
     ("worker/qwen_worker.py", "data"),
     ("LICENSE", "."),

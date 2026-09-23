@@ -12,10 +12,22 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
 from . import config
+
+
+def cartella_temporanea() -> Path:
+    """Dove scrivere i .cmd per explorer e i loro esiti.
+
+    %TEMP% si vede da qualunque processo, anche da applicazioni in contenitore
+    (MSIX) che hanno una copia privata di %LOCALAPPDATA%.
+    """
+    cartella = Path(tempfile.gettempdir()) / "ImageCreatorFree"
+    cartella.mkdir(parents=True, exist_ok=True)
+    return cartella
 
 
 def runtime_pythonw() -> Path | None:
@@ -44,6 +56,8 @@ def script_finestra() -> Path:
     shutil.copytree(bundle / "app" / "src", dest / "src", dirs_exist_ok=True,
                     ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(bundle / "app" / "ImageCreatorFree.pyw", dest / "ImageCreatorFree.pyw")
+    if (bundle / "app" / "CHANGELOG.md").exists():
+        shutil.copy2(bundle / "app" / "CHANGELOG.md", dest / "CHANGELOG.md")
     # Fuori dall'eseguibile config.app_dir() e' questa cartella: il worker va qui.
     (dest / "worker").mkdir(parents=True, exist_ok=True)
     shutil.copy2(bundle / "data" / "qwen_worker.py", dest / "worker" / "qwen_worker.py")
@@ -67,7 +81,7 @@ def apri_con_explorer(comandi: list[str], nome: str = "avvio.cmd") -> Path:
     righe.extend(comandi)
     # "start" apre i .cmd con cmd /K: senza exit la console ridotta resterebbe aperta.
     righe.append("exit")
-    cmd = config.data_dir() / nome
+    cmd = cartella_temporanea() / nome
     cmd.write_bytes(("\r\n".join(righe) + "\r\n").encode("utf-8"))
     explorer = Path(os.environ.get("WINDIR", r"C:\Windows")) / "explorer.exe"
     subprocess.Popen([str(explorer), str(cmd)], close_fds=True)
@@ -90,7 +104,7 @@ def esegui_da_explorer(argomenti: list[str], attesa: float = 600.0,
     Restituisce (codice di uscita, output unito); il codice e' None se il
     comando non finisce in tempo.
     """
-    base = config.data_dir() / nome
+    base = cartella_temporanea() / nome
     uscita = base.with_suffix(".out")
     codice = base.with_suffix(".codice")
     for vecchio in (uscita, codice):
@@ -118,7 +132,7 @@ def esegui_da_explorer(argomenti: list[str], attesa: float = 600.0,
 
 def prova_pipeline(attesa: float = 300.0) -> str:
     """Diagnostica: importa la pipeline Qwen in un processo nato da explorer."""
-    script = config.data_dir() / "prova_pipeline.py"
+    script = cartella_temporanea() / "prova_pipeline.py"
     script.write_text("from diffusers import QwenImage21Pipeline\nprint('ok')\n",
                       encoding="utf-8")
     codice, testo = esegui_da_explorer(
