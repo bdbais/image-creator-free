@@ -4,311 +4,415 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Image Creator Free — immagini con Qwen-Image-2.1 sul tuo computer</title>
-<meta name="description" content="Applicazione Windows gratuita e open source per generare immagini in locale con Qwen-Image-2.1: testo, trasparenze RGBA, modifica con dieci riferimenti. Niente account, niente abbonamenti.">
+<meta name="description" content="Applicazione Windows gratuita e open source per generare immagini in locale con Qwen-Image-2.1: testo dentro le immagini, trasparenze, progetti, restauro di foto antiche. Niente account, niente abbonamenti.">
 <link rel="canonical" href="https://imagecreator.bais.info/">
 <meta property="og:title" content="Image Creator Free">
-<meta property="og:description" content="Genera immagini con Qwen-Image-2.1 sul tuo computer. Windows, open source, senza account.">
+<meta property="og:description" content="Genera e restaura immagini con Qwen-Image-2.1 sul tuo computer. Windows, open source, senza account.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://imagecreator.bais.info/">
-<meta property="og:image" content="https://imagecreator.bais.info/img/schermata.png">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='22' fill='%230a6ed1'/><text x='32' y='45' font-family='system-ui,sans-serif' font-size='38' font-weight='700' fill='white' text-anchor='middle'>B</text></svg>">
+<meta property="og:image" content="https://imagecreator.bais.info/img/og.jpg">
+<meta name="theme-color" content="#0c0a24">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" href="img/icona.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
-  --bg:#ffffff; --bg-soft:#f5f7fa; --bg-card:#ffffff;
-  --fg:#12181f; --fg-muted:#5b6773; --border:#e2e8f0;
-  --brand:#0a6ed1; --brand-fg:#ffffff;
-  --good:#1b7f4b; --warn:#b26b00;
-  --radius:14px; --maxw:1040px;
+  --bg:#0c0a24; --bg-2:#110e30; --card:#161338; --card-2:#1c1846;
+  --fg:#efeeff; --muted:#aaa6d8; --faint:#6f6aa3; --border:#2a2560;
+  --violet:#7b4bf2; --blue:#2a7bf0; --sun:#ffb46b; --pink:#ff6fae; --spark:#ffe89a;
+  --grad:linear-gradient(120deg,#6a38ee 0%,#8a45e0 40%,#2a7bf0 100%);
+  --radius:18px; --maxw:1120px;
 }
-@media (prefers-color-scheme: dark){ :root{
-  --bg:#0d1117; --bg-soft:#131a23; --bg-card:#161d27;
-  --fg:#e6edf3; --fg-muted:#9aa7b4; --border:#252e3a;
-  --brand:#4c9aff; --brand-fg:#06121f;
-  --good:#4ade80; --warn:#fbbf24; } }
-
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;background:var(--bg)}
 body{margin:0;background:var(--bg);color:var(--fg);
      font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-     -webkit-font-smoothing:antialiased}
+     -webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:#b9a8ff}
 .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px}
-a{color:var(--brand)}
-h1,h2,h3{line-height:1.25;margin:0 0 .4em}
-h1{font-size:clamp(1.9rem,4vw,2.6rem);letter-spacing:-.02em}
-h2{font-size:1.45rem;margin-top:0}
+h1,h2,h3{line-height:1.2;margin:0 0 .45em;letter-spacing:-.015em}
+h2{font-size:clamp(1.6rem,3.2vw,2.2rem)}
+h3{font-size:1.08rem}
 p{margin:0 0 1em}
+.muted{color:var(--muted)}
+.eyebrow{display:inline-block;font-size:.8rem;font-weight:700;letter-spacing:.12em;
+         text-transform:uppercase;color:var(--spark);margin-bottom:10px}
 
-header{border-bottom:1px solid var(--border);background:var(--bg);
-       position:sticky;top:0;z-index:10}
-header .wrap{display:flex;align-items:center;gap:18px;height:60px}
-.brand{display:flex;align-items:center;gap:9px;font-weight:600;
-       color:var(--fg);text-decoration:none}
-.mark{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;
-      background:var(--brand);color:#fff;font-weight:700;font-size:15px}
-header nav{margin-left:auto;display:flex;gap:18px;flex-wrap:wrap}
-header nav a{color:var(--fg-muted);text-decoration:none;font-size:.94rem}
-header nav a:hover{color:var(--brand)}
+/* ---- header ---- */
+header{position:sticky;top:0;z-index:20;background:rgba(12,10,36,.82);
+       backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+       border-bottom:1px solid var(--border)}
+header .wrap{display:flex;align-items:center;gap:16px;height:62px}
+.brand{display:flex;align-items:center;gap:10px;color:var(--fg);text-decoration:none;
+       font-weight:700;white-space:nowrap}
+.brand img{width:30px;height:30px;border-radius:9px}
+header nav{margin-left:auto;display:flex;align-items:center;gap:20px}
+header nav a{color:var(--muted);text-decoration:none;font-size:.93rem}
+header nav a:hover{color:var(--fg)}
+header nav a.cta{color:#fff;background:var(--grad);padding:8px 16px;border-radius:999px;font-weight:600}
+@media (max-width:820px){ header nav a:not(.cta){display:none} }
 
-.hero{padding:44px 0 8px}
-.crumb{font-size:.88rem;color:var(--fg-muted);margin-bottom:14px}
-.crumb a{color:var(--fg-muted)}
-.tagline{font-size:1.2rem;color:var(--fg-muted);margin:-.2em 0 1em}
-.lede{font-size:1.02rem;max-width:64ch}
-.actions{display:flex;flex-wrap:wrap;gap:12px;margin:22px 0 14px}
-.btn{display:inline-block;padding:11px 20px;border-radius:12px;font-weight:600;
-     text-decoration:none;border:1px solid var(--border);color:var(--fg);
-     background:var(--bg-card)}
-.btn:hover{border-color:var(--brand)}
-.btn.primary{background:var(--brand);border-color:var(--brand);color:var(--brand-fg)}
+/* ---- hero ---- */
+.hero{position:relative;padding:64px 0 40px;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-30% -10% auto -10%;height:120%;
+  background:radial-gradient(40% 50% at 70% 35%,rgba(255,111,174,.28),transparent 70%),
+             radial-gradient(45% 55% at 25% 20%,rgba(123,75,242,.35),transparent 70%),
+             radial-gradient(40% 40% at 90% 80%,rgba(42,123,240,.25),transparent 70%);
+  pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center}
+@media (max-width:900px){ .hero .wrap{grid-template-columns:1fr} }
+.crumb{font-size:.86rem;color:var(--faint);margin-bottom:18px}
+.crumb a{color:var(--muted);text-decoration:none}
+.hero h1{font-size:clamp(2.4rem,5.6vw,4rem);margin-bottom:.25em}
+.hero h1 span{background:linear-gradient(90deg,#ffe89a,#ffb46b 40%,#ff6fae 75%,#b9a8ff);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tagline{font-size:clamp(1.1rem,2vw,1.3rem);color:var(--muted);max-width:34em}
+.actions{display:flex;flex-wrap:wrap;gap:12px;margin:26px 0 18px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:13px 22px;border-radius:14px;
+     font-weight:650;text-decoration:none;color:var(--fg);border:1px solid var(--border);
+     background:var(--card)}
+.btn:hover{border-color:#5d53b8}
+.btn.primary{background:var(--grad);border-color:transparent;color:#fff;
+             box-shadow:0 10px 30px -10px rgba(123,75,242,.7)}
 .btn.coffee{background:#ffc439;border-color:#ffc439;color:#111}
-ul.facts{list-style:none;display:flex;flex-wrap:wrap;gap:8px 18px;
-         padding:0;margin:0 0 6px;font-size:.9rem;color:var(--fg-muted)}
-ul.facts li::before{content:"·";margin-right:8px;color:var(--border)}
-ul.facts li:first-child::before{content:"";margin:0}
-.version{color:var(--good);font-weight:600}
+.facts{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0}
+.facts li{font-size:.84rem;color:var(--muted);border:1px solid var(--border);
+          background:rgba(22,19,56,.6);padding:4px 11px;border-radius:999px}
+.facts li.version{color:#9ff0c0;border-color:#285f4a}
+.showcase{position:relative;aspect-ratio:1/1;max-width:520px;margin-left:auto;width:100%}
+.showcase .ph{position:absolute;border-radius:16px;overflow:hidden;
+  border:6px solid #fff;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.showcase .ph img{width:100%;height:100%;object-fit:cover}
+.showcase .a{width:66%;left:4%;top:12%;transform:rotate(-7deg);aspect-ratio:1/1}
+.showcase .b{width:48%;right:0;top:2%;transform:rotate(6deg);aspect-ratio:3/4}
+.showcase .c{width:50%;right:6%;bottom:0;transform:rotate(-2deg);aspect-ratio:16/10}
+.showcase .spark{position:absolute;width:15%;top:-2%;left:0;filter:drop-shadow(0 0 18px rgba(255,232,154,.8))}
+@media (max-width:900px){ .showcase{margin:10px auto 0;max-width:420px} }
 
-figure.shot{margin:30px 0 0}
-figure.shot img{width:100%;height:auto;border:1px solid var(--border);
-                border-radius:var(--radius);display:block}
-figure.shot figcaption{color:var(--fg-muted);font-size:.86rem;margin-top:8px}
+/* ---- sezioni ---- */
+section{padding:72px 0;border-top:1px solid var(--border)}
+.lead{font-size:1.08rem;color:var(--muted);max-width:44em;margin-bottom:34px}
 
-section{padding:40px 0;border-top:1px solid var(--border)}
-section:first-of-type{border-top:none}
-.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr))}
-.card{background:var(--bg-card);border:1px solid var(--border);
-      border-radius:var(--radius);padding:18px 20px}
-.card h3{font-size:1.02rem;margin-bottom:.35em}
-.card p{margin:0;color:var(--fg-muted);font-size:.95rem}
+/* galleria */
+.gallery{columns:3 300px;column-gap:18px}
+.gallery figure{break-inside:avoid;margin:0 0 18px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.gallery a.img{display:block;background:repeating-conic-gradient(#2a2560 0 25%,#1c1846 0 50%) 0 0/22px 22px}
+.gallery figcaption{padding:14px 16px 16px}
+.gallery figcaption strong{display:block;font-size:1rem}
+.gallery .meta{font-size:.8rem;color:var(--faint);margin:2px 0 8px}
+.gallery details{font-size:.83rem;color:var(--muted)}
+.gallery summary{cursor:pointer;color:#b9a8ff}
+.gallery details p{margin:.6em 0 0;font-family:ui-monospace,Consolas,monospace;font-size:.78rem;
+  line-height:1.5;white-space:pre-wrap}
 
-table{width:100%;border-collapse:collapse;font-size:.95rem}
-td,th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);
-      vertical-align:top}
-th{color:var(--fg-muted);font-weight:600;width:170px}
+/* due colonne */
+.split{display:grid;grid-template-columns:1fr 1.15fr;gap:44px;align-items:center}
+.split.rev{grid-template-columns:1.15fr 1fr}
+@media (max-width:900px){ .split,.split.rev{grid-template-columns:1fr} }
+.shot{border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;
+      box-shadow:0 30px 70px -30px rgba(0,0,0,.8)}
+ul.ticks{list-style:none;padding:0;margin:0 0 1em}
+ul.ticks li{position:relative;padding-left:28px;margin:0 0 .7em}
+ul.ticks li::before{content:"";position:absolute;left:0;top:.35em;width:16px;height:16px;
+  background:var(--spark);
+  clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+
+/* restauro */
+.before-after{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:700px){ .before-after{grid-template-columns:1fr} }
+.before-after figure{margin:0}
+.before-after img{border-radius:14px;border:1px solid var(--border);aspect-ratio:3/4;object-fit:cover;width:100%}
+.before-after figcaption{font-size:.85rem;color:var(--muted);margin-top:8px}
+.before-after figcaption b{color:var(--fg)}
+
+/* funzioni */
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px}
+.card .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:var(--card-2);margin-bottom:12px;color:var(--spark)}
+.card p{margin:0;color:var(--muted);font-size:.94rem}
+
+table{width:100%;border-collapse:collapse;font-size:.95rem;background:var(--card);
+      border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+td,th{text-align:left;padding:13px 16px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--muted);font-weight:600;width:200px}
 tr:last-child td,tr:last-child th{border-bottom:none}
+@media (max-width:600px){ th{width:auto;display:block;border-bottom:none;padding-bottom:0}
+  td{display:block} }
 
-pre{background:var(--bg-soft);border:1px solid var(--border);border-radius:12px;
-    padding:14px 16px;overflow-x:auto;font-size:.88rem}
+.steps{counter-reset:s;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-bottom:24px}
+.steps .card{position:relative;padding-top:52px}
+.steps .card::before{counter-increment:s;content:counter(s);position:absolute;top:16px;left:22px;
+  width:28px;height:28px;border-radius:50%;background:var(--grad);display:grid;place-items:center;
+  font-weight:700;font-size:.9rem}
+pre{background:var(--bg-2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;
+    overflow-x:auto;font-size:.86rem}
 code{font-family:ui-monospace,Consolas,monospace}
-blockquote{margin:0;padding:14px 18px;border-left:3px solid var(--brand);
-           background:var(--bg-soft);border-radius:0 12px 12px 0;color:var(--fg-muted)}
-.prompt{font-family:ui-monospace,Consolas,monospace;font-size:.86rem;
-        color:var(--fg-muted);display:block;margin-top:.5em}
-.support{background:var(--bg-soft)}
-footer{border-top:1px solid var(--border);padding:28px 0 40px;
-       color:var(--fg-muted);font-size:.9rem}
-footer a{color:var(--fg-muted)}
-.note{color:var(--fg-muted);font-size:.9rem}
+blockquote{margin:0;padding:16px 20px;border-left:3px solid var(--violet);background:var(--card);
+           border-radius:0 14px 14px 0;color:var(--muted)}
+.support{background:linear-gradient(160deg,rgba(123,75,242,.18),rgba(42,123,240,.08))}
+footer{border-top:1px solid var(--border);padding:34px 0 46px;color:var(--faint);font-size:.9rem}
+footer a{color:var(--muted)}
+.note{color:var(--faint);font-size:.9rem}
 </style>
 </head>
 <body>
 
 <header>
   <div class="wrap">
-    <a class="brand" href="https://bais.info/"><span class="mark">B</span>bais.info</a>
+    <a class="brand" href="#"><img src="img/icona-64.png" alt="" width="30" height="30">Image Creator Free</a>
     <nav>
-      <a href="#funzioni">Cosa fa</a>
-      <a href="#esempi">Esempi</a>
+      <a href="#galleria">Galleria</a>
+      <a href="#progetti">Progetti</a>
+      <a href="#restauro">Restauro</a>
+      <a href="#funzioni">Funzioni</a>
       <a href="#requisiti">Requisiti</a>
-      <a href="#installazione">Installazione</a>
-      <a href="https://github.com/bdbais/image-creator-free/blob/main/docs/MANUALE.md">Manuale</a>
-      <a href="https://github.com/bdbais/image-creator-free">GitHub</a>
+      <a class="cta" href="#scarica">Scarica</a>
     </nav>
   </div>
 </header>
 
-<main class="wrap">
-
+<main>
   <div class="hero">
-    <div class="crumb"><a href="https://bais.info/#progetti">Progetti</a> / Image Creator Free</div>
-    <h1>Image Creator Free</h1>
-    <p class="tagline">Immagini generate con Qwen-Image-2.1, sul tuo computer.</p>
-    <p class="lede">
-      Scrivi cosa vuoi vedere e premi Genera: il modello gira sulla tua scheda video, le
-      immagini restano sul tuo disco. Niente account, niente abbonamento, niente crediti da
-      comprare. Windows, open source, gratuito.
-    </p>
-
-    <div class="actions">
-      <a class="btn primary" href="https://github.com/bdbais/image-creator-free/releases/latest/download/ImageCreatorFree-Setup.exe">Scarica per Windows</a>
-      <a class="btn" href="https://github.com/bdbais/image-creator-free/releases/latest/download/ImageCreatorFree-portable.exe">Versione portatile</a>
-      <a class="btn" href="https://github.com/bdbais/image-creator-free">Codice sorgente</a>
+    <div class="wrap">
+      <div>
+        <div class="crumb"><a href="https://bais.info/">bais.info</a> / <a href="https://bais.info/local-ai/">Server e AI sul tuo computer</a></div>
+        <h1>Immagini che nascono <span>sul tuo computer</span></h1>
+        <p class="tagline">Image Creator Free porta Qwen-Image-2.1 su Windows: scrivi cosa vuoi
+          vedere, restaura una foto di famiglia, prova dieci varianti di un'idea. Niente
+          account, niente crediti, niente prompt che escono di casa.</p>
+        <div class="actions">
+          <a class="btn primary" href="https://github.com/bdbais/image-creator-free/releases/latest/download/ImageCreatorFree-Setup.exe">Scarica per Windows</a>
+          <a class="btn" href="https://github.com/bdbais/image-creator-free/releases/latest/download/ImageCreatorFree-portable.exe">Versione portatile</a>
+          <a class="btn" href="https://github.com/bdbais/image-creator-free">GitHub</a>
+        </div>
+        <ul class="facts">
+          <li id="version" class="version" hidden></li>
+          <li>Gratis e open source (MIT)</li>
+          <li>Windows 10/11</li>
+          <li>NVIDIA da 8 GB</li>
+          <li>Nessuna telemetria</li>
+          <li>Si aggiorna da solo</li>
+        </ul>
+      </div>
+      <div class="showcase" aria-hidden="true">
+        <div class="ph a"><img src="img/vetrina/transparent-sticker-rgba-mini.webp" alt=""></div>
+        <div class="ph b"><img src="img/vetrina/complessa-menu-lavagna-mini.webp" alt=""></div>
+        <div class="ph c"><img src="img/vetrina/complessa-mercato-napoli-mini.webp" alt=""></div>
+        <svg class="spark" viewBox="-1 -1 2 2"><path fill="#ffe89a" d="M0-1C.08-.3.3-.08 1 0 .3.08.08.3 0 1-.08.3-.3.08-1 0-.3-.08-.08-.3 0-1Z"/></svg>
+      </div>
     </div>
-
-    <ul class="facts">
-      <li id="version" class="version" hidden></li>
-      <li>Windows 10/11 a 64 bit</li>
-      <li>NVIDIA da 8 GB di VRAM</li>
-      <li>33 GB di disco</li>
-      <li>MIT</li>
-      <li>Nessuna telemetria</li>
-    </ul>
-
-    <figure class="shot">
-      <img src="img/schermata.png" alt="La finestra di Image Creator Free: elenco degli esempi ufficiali a sinistra, prompt e parametri al centro, galleria delle immagini generate in basso." width="1360" height="900">
-      <figcaption>Gli esempi ufficiali di Qwen a sinistra, il prompt al centro, la galleria in basso.</figcaption>
-    </figure>
-
-    <figure class="shot">
-      <img src="img/esempio-neon.png" alt="Insegna al neon con la scritta QWEN IMAGE 2.1 in una notte di pioggia, con i riflessi sull'asfalto bagnato." width="1024" height="1024" loading="lazy">
-      <figcaption>Generata dal prompt ufficiale su una RTX 4070 da 12 GB: 1024x1024,
-        20 passi, 2 minuti e 10 secondi. Il modello scrive la frase esatta chiesta nel prompt.</figcaption>
-    </figure>
   </div>
 
-  <section id="funzioni">
-    <h2>Cosa fa</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Testo → immagine</h3>
-        <p>Fino a 2048x2048, nei sette formati previsti dal modello: quadrato, 4:3, 3:4, 3:2,
-           2:3, 16:9, 9:16.</p>
-      </div>
-      <div class="card">
-        <h3>Scrive davvero le parole</h3>
-        <p>Qwen-Image-2.1 è nato per la tipografia: insegne, manifesti, didascalie. Metti tra
-           virgolette il testo che deve comparire e lo trovi nell'immagine.</p>
-      </div>
-      <div class="card">
-        <h3>Sfondo trasparente</h3>
-        <p>Immagini RGBA native, con il canale alpha: sticker e loghi già ritagliati, senza
-           passare da un programma di fotoritocco.</p>
-      </div>
-      <div class="card">
-        <h3>Modifica con riferimenti</h3>
-        <p>Trascina fino a dieci immagini e citale nel prompt: cambia uno sfondo, monta una
-           foto di gruppo, arreda una stanza con oggetti tuoi.</p>
-      </div>
-      <div class="card">
-        <h3>40 esempi pronti</h3>
-        <p>I prompt della scheda del modello e della demo ufficiale di Qwen, tradotti nei
-           titoli e caricabili con un clic.</p>
-      </div>
-      <div class="card">
-        <h3>Galleria con memoria</h3>
-        <p>Seed, passi e parametri restano dentro il PNG: "Riusa i parametri" rimette tutto
-           com'era e cambi solo quello che vuoi.</p>
+  <section id="galleria">
+    <div class="wrap">
+      <span class="eyebrow">Galleria</span>
+      <h2>Fatte con il programma, così come sono uscite</h2>
+      <p class="lead">Gli esempi che trovi dentro l'applicazione, generati su una RTX 4070 da
+        12 GB con seed 42 e 24 passi. Nessun ritocco: il testo nelle immagini l'ha scritto il
+        modello. Apri i prompt per vedere cosa gli è stato chiesto.</p>
+      <div class="gallery">
+        <figure>
+          <a class="img" href="img/vetrina/complessa-menu-lavagna.webp"><img src="img/vetrina/complessa-menu-lavagna-mini.webp" alt="Menù su lavagna con prezzi" width="832" height="1248" loading="lazy"></a>
+          <figcaption><strong>Menù su lavagna con prezzi</strong>
+            <div class="meta">832x1248 · 24 passi · 3 min 21 s su RTX 4070</div>
+            <details><summary>Il prompt</summary><p>A photo of a real chalkboard menu hanging on a brick wall in a cosy trattoria, hand-drawn in white and coloured chalk with small doodles of basil, tomatoes and a wine bottle. Title: &quot;Menù del giorno&quot;. Section &quot;Primi&quot;: &quot;Tagliatelle al ragù - 12 €&quot;, &quot;Risotto ai funghi porcini - 14 €&quot;. Section &quot;Secondi&quot;: &quot;Saltimbocca alla romana - 16 €&quot;, &quot;Branzino al forno - 18 €&quot;. Section &quot;Dolci&quot;: &quot;Tiramisù della casa - 6 €&quot;. Bottom line: &quot;Coperto 2 € · Acqua e pane inclusi&quot;. Chalk dust, slight smudges, warm light from a pendant lamp, every word readable and correctly aligned with its price.</p></details></figcaption>
+        </figure>
+        <figure>
+          <a class="img" href="img/vetrina/complessa-mercato-napoli.webp"><img src="img/vetrina/complessa-mercato-napoli-mini.webp" alt="Mercato notturno con insegne scritte" width="1344" height="768" loading="lazy"></a>
+          <figcaption><strong>Mercato notturno con insegne scritte</strong>
+            <div class="meta">1344x768 · 24 passi · 3 min 00 s su RTX 4070</div>
+            <details><summary>Il prompt</summary><p>Cinematic wide shot of a crowded night street market in an old Italian port city after the rain. Narrow alley with washing lines between baroque balconies, strings of warm bulbs, wet cobblestones reflecting neon. Left: a fish stall with a hand-painted wooden sign that reads &quot;PESCHERIA DA TOTÒ&quot; and ice trays of anchovies and octopus. Centre: a lemon stall with a chalkboard that reads &quot;LIMONI DI AMALFI - 3 € AL KG&quot;. Right: a small café with a red neon sign that reads &quot;BAR ESPRESSO&quot; and two old men playing cards at a tin table. Background: a scooter with a delivery box, a church dome lit in orange, light fog. Shot on 35mm, shallow depth of field, rich colour contrast between warm tungsten and cyan neon, realistic textures, every sign perfectly legible.</p></details></figcaption>
+        </figure>
+        <figure>
+          <a class="img" href="img/vetrina/complessa-mappa-isometrica.webp"><img src="img/vetrina/complessa-mappa-isometrica-mini.webp" alt="Mappa isometrica di un borgo con etichette" width="1024" height="1024" loading="lazy"></a>
+          <figcaption><strong>Mappa isometrica di un borgo con etichette</strong>
+            <div class="meta">1024x1024 · 24 passi · 2 min 59 s su RTX 4070</div>
+            <details><summary>Il prompt</summary><p>Detailed isometric illustration of a small Italian hill village seen from above at a 30-degree angle, soft pastel colours and crisp shading like a high-end tourism map. A medieval tower on the hilltop labelled &quot;Torre Civica&quot;, a piazza with a fountain labelled &quot;Piazza Grande&quot;, a church labelled &quot;San Michele&quot;, vineyards on terraced slopes labelled &quot;Vigneti&quot;, a winding road with a small red bus, a train station at the bottom labelled &quot;Stazione&quot;, and a river with a stone bridge labelled &quot;Ponte Vecchio&quot;. Tiny people, cafés with umbrellas, cypress trees, clean white labels with thin leader lines, a compass rose in the corner and a title banner &quot;Benvenuti a Montefiore&quot;.</p></details></figcaption>
+        </figure>
+        <figure>
+          <a class="img" href="img/vetrina/complessa-fumetto-quattro-vignette.webp"><img src="img/vetrina/complessa-fumetto-quattro-vignette-mini.webp" alt="Fumetto in 4 vignette con dialoghi" width="896" height="1184" loading="lazy"></a>
+          <figcaption><strong>Fumetto in 4 vignette con dialoghi</strong>
+            <div class="meta">896x1184 · 24 passi · 3 min 11 s su RTX 4070</div>
+            <details><summary>Il prompt</summary><p>A four-panel comic strip in a 2x2 grid with thin black borders and white gutters, European ligne claire style, flat colours. The same two characters in every panel: a tall grey-haired grandmother in a green cardigan and a small boy in a yellow raincoat. Panel 1: kitchen, the boy holds a tablet, speech bubble &quot;Nonna, l&#x27;intelligenza artificiale sa cucinare?&quot;. Panel 2: the grandmother raises an eyebrow while rolling pasta dough, bubble &quot;Sa scrivere la ricetta.&quot;. Panel 3: close-up of her floury hands shaping tortellini, bubble &quot;Ma le mani ce le metto io.&quot;. Panel 4: both at the table eating, the tablet forgotten on a chair, caption box at the bottom &quot;Domenica, ore 13&quot;. Consistent faces and clothes across panels, clear readable lettering in the bubbles.</p></details></figcaption>
+        </figure>
+        <figure>
+          <a class="img" href="img/vetrina/transparent-sticker-rgba.webp"><img src="img/vetrina/transparent-sticker-rgba-mini.webp" alt="Sticker trasparente (RGBA)" width="1024" height="1024" loading="lazy"></a>
+          <figcaption><strong>Sticker trasparente (RGBA)</strong>
+            <div class="meta">1024x1024 · 24 passi · 3 min 17 s su RTX 4070</div>
+            <details><summary>Il prompt</summary><p>This is an RGBA image with transparency. A cute cartoon dragon sticker. The image has alpha channel and the background is transparent.</p></details></figcaption>
+        </figure>
       </div>
     </div>
   </section>
 
-  <section id="esempi">
-    <h2>Tre esempi, dalla demo ufficiale</h2>
-    <p class="note">Sono già dentro il programma: si scelgono dall'elenco a sinistra.</p>
-    <div class="grid">
-      <div class="card">
-        <h3>Insegna al neon</h3>
-        <p>Testo nell'immagine, riflessi sull'asfalto bagnato.
-          <code class="prompt">A neon shop sign that reads "QWEN IMAGE 2.1", rainy night,
-          reflections on wet pavement</code></p>
+  <section id="progetti">
+    <div class="wrap split">
+      <div>
+        <span class="eyebrow">Progetti</span>
+        <h2>Un'idea, dieci varianti, nessuna persa</h2>
+        <p class="muted">Ogni cosa che generi appartiene a un progetto, con il suo prompt, i
+          suoi parametri, le immagini di riferimento e tutti i risultati in una cartella sua.</p>
+        <ul class="ticks">
+          <li><b>Duplica</b> un progetto e cambia quello che vuoi: formato, passi, prompt.
+            L'originale resta com'era.</li>
+          <li><b>Riparti da un'immagine</b> riuscita con il suo seed, per fare varianti che
+            restano vicine.</li>
+          <li><b>I tuoi prompt</b> tornano tra gli esempi, pronti da riusare.</li>
+          <li>Ogni PNG porta dentro prompt, seed e parametri: niente si perde.</li>
+        </ul>
       </div>
-      <div class="card">
-        <h3>Sticker trasparente</h3>
-        <p>Il formato consigliato per ottenere il canale alpha.
-          <code class="prompt">This is an RGBA image with transparency. A cute cartoon dragon
-          sticker. The image has alpha channel and the background is transparent.</code></p>
+      <img class="shot" src="img/progetti.webp" alt="La finestra di Image Creator Free con l'elenco dei progetti a sinistra, il prompt e i parametri al centro e la galleria delle immagini del progetto in basso." width="1360" height="900" loading="lazy">
+    </div>
+  </section>
+
+  <section id="restauro">
+    <div class="wrap">
+      <span class="eyebrow">Restauro foto</span>
+      <h2>Le foto di famiglia, di nuovo nitide</h2>
+      <p class="lead">Graffi, pieghe, macchie, angoli strappati, volti sbiaditi. Dai al
+        programma la foto rovinata e, se le hai, altre foto della stessa persona: le usa solo
+        come riferimento per ricostruire il volto dove l'originale non c'è più. Puoi restare
+        in bianco e nero o colorare.</p>
+      <div class="before-after">
+        <figure><img src="img/vetrina/restauro-rovinata.webp" alt="Prima: la stampa rovinata: graffi, piega, macchie, angolo strappato" loading="lazy"><figcaption><b>Prima</b> — la stampa rovinata: graffi, piega, macchie, angolo strappato</figcaption></figure>
+        <figure><img src="img/vetrina/restauro-restaurata.webp" alt="Dopo: restaurata dal modello in 3 min 30 s" loading="lazy"><figcaption><b>Dopo</b> — restaurata dal modello in 3 min 30 s</figcaption></figure>
+        <figure><img src="img/vetrina/restauro-originale.webp" alt="Riferimento: il ritratto inventato da cui è partita la demo" loading="lazy"><figcaption><b>Riferimento</b> — il ritratto inventato da cui è partita la demo</figcaption></figure>
       </div>
-      <div class="card">
-        <h3>Ritratto editoriale</h3>
-        <p>Luce naturale, grana fotografica, niente scritte.
-          <code class="prompt">Create an editorial portrait of a botanist in a sunlit
-          greenhouse, surrounded by ferns and delicate orchids...</code></p>
+      <p class="note" style="margin-top:14px">Nella demo il ritratto è inventato: generato
+        dal modello, poi rovinato apposta, poi restaurato con l'esempio «Restauro B/N di una
+        sola foto». Nessuna persona reale.</p>
+    </div>
+  </section>
+
+  <section id="funzioni">
+    <div class="wrap">
+      <span class="eyebrow">Funzioni</span>
+      <h2>Tutto quello che serve, niente di più</h2>
+      <div class="grid">
+        <div class="card"><div class="ico">Aa</div><h3>Scrive davvero le parole</h3>
+          <p>Insegne, menù, copertine, fumetti: metti il testo tra virgolette e lo trovi
+             nell'immagine, scritto giusto.</p></div>
+        <div class="card"><div class="ico">◩</div><h3>Sfondo trasparente</h3>
+          <p>PNG con canale alpha nativo: sticker e loghi già ritagliati.</p></div>
+        <div class="card"><div class="ico">⧉</div><h3>Fino a 10 riferimenti</h3>
+          <p>Trascina le tue foto e citale nel prompt: cambia uno sfondo, monta una foto di
+             gruppo, vesti un modello.</p></div>
+        <div class="card"><div class="ico">❖</div><h3>Oltre 60 esempi</h3>
+          <p>Quelli ufficiali di Qwen, scene complesse, restauro, e i prompt che hai già
+             usato.</p></div>
+        <div class="card"><div class="ico">▦</div><h3>Sette formati</h3>
+          <p>Da 1:1 a 16:9 e 9:16, fino a 2048 pixel, con tre livelli di qualità.</p></div>
+        <div class="card"><div class="ico">⟳</div><h3>Si aggiorna da solo</h3>
+          <p>All'avvio controlla la versione, mostra le novità e installa l'aggiornamento,
+             verificato con SHA-256.</p></div>
+        <div class="card"><div class="ico">⌂</div><h3>Tutto in locale</h3>
+          <p>Il modello gira sulla tua scheda video; prompt e immagini restano sul disco.</p></div>
+        <div class="card"><div class="ico">⚙</div><h3>Pensa alla memoria</h3>
+          <p>Sceglie da solo come usare VRAM e RAM, e avvisa prima se una risoluzione o il
+             caricamento non ci stanno.</p></div>
       </div>
     </div>
   </section>
 
   <section id="tempi">
-    <h2>Quanto ci mette</h2>
-    <p class="note">Misurato su una RTX 4070 da 12 GB, modello su SSD, stesso prompt e
-       stesso seed.</p>
-    <table>
-      <tr><th>Caricamento del modello</th><td>41 secondi (una volta per sessione)</td></tr>
-      <tr><th>1024x1024, 20 passi</th><td>3 minuti — 9,1 s per passo</td></tr>
-      <tr><th>1536x1536, 30 passi</th><td>8 minuti e mezzo — 17,2 s per passo</td></tr>
-      <tr><th>2048x2048, 40 passi</th><td>fuori portata con 12 GB di VRAM: servono almeno 16 GB</td></tr>
-    </table>
+    <div class="wrap">
+      <span class="eyebrow">Quanto ci mette</span>
+      <h2>Tempi veri, misurati</h2>
+      <p class="lead">RTX 4070 da 12 GB, 48 GB di RAM, modello su SSD. Con più VRAM il
+        modello resta tutto sulla scheda ed è molto più veloce.</p>
+      <table>
+        <tr><th>Caricamento del modello</th><td>circa 40 secondi, una volta per sessione</td></tr>
+        <tr><th>Menù su lavagna con prezzi, 832x1248, 24 passi</th><td>3 min 21 s — 8.4 s per passo</td></tr>
+        <tr><th>Mercato notturno con insegne scritte, 1344x768, 24 passi</th><td>3 min 00 s — 7.5 s per passo</td></tr>
+        <tr><th>1024x1024, 20 passi</th><td>3 minuti — 9,1 s per passo</td></tr>
+        <tr><th>1536x1536, 30 passi</th><td>8 minuti e mezzo — 17,2 s per passo</td></tr>
+        <tr><th>2048x2048, 40 passi</th><td>fuori portata con 12 GB di VRAM: servono almeno 16 GB</td></tr>
+      </table>
+    </div>
   </section>
 
   <section id="requisiti">
-    <h2>Cosa serve</h2>
-    <table>
-      <tr>
-        <th>Scheda video</th>
-        <td>NVIDIA da 8 GB di VRAM in su. Il modello occupa 33 GB: sotto i 20 GB di VRAM
-            resta in RAM e viene spostato sulla scheda un pezzo alla volta - funziona bene,
-            ma è più lento. Senza GPU gira sulla CPU, con decine di minuti per immagine.</td>
-      </tr>
-      <tr>
-        <th>RAM</th>
-        <td>32 GB consigliati. Con 16 GB funziona, ma il sistema usa molto il file di
-            scambio.</td>
-      </tr>
-      <tr>
-        <th>Disco</th>
-        <td>3 GB per l'ambiente di calcolo e 33 GB per il modello, meglio su un SSD:
-            vengono riletti a ogni caricamento. Misurato qui: 38 secondi da SSD, circa
-            un'ora da disco meccanico. La cartella la scegli al primo avvio.</td>
-      </tr>
-      <tr>
-        <th>Rete</th>
-        <td>Solo per i due download iniziali. Dopo, il programma funziona anche offline.</td>
-      </tr>
-      <tr>
-        <th>Windows</th>
-        <td>10 o 11, a 64 bit. Non serve avere Python: se manca, il programma ne scarica una
-            copia dedicata e non tocca quello che hai già installato.</td>
-      </tr>
-    </table>
+    <div class="wrap">
+      <span class="eyebrow">Requisiti</span>
+      <h2>Cosa serve</h2>
+      <table>
+        <tr><th>Scheda video</th><td>NVIDIA da 8 GB di VRAM in su. Sotto i 20 GB il modello
+          resta in RAM e passa sulla scheda un pezzo alla volta: funziona, ma è più lento.</td></tr>
+        <tr><th>Memoria</th><td>Il caricamento chiede circa 35 GB tra RAM e file di paging:
+          con 32 GB di RAM conviene un file di paging generoso. Il programma avvisa prima di
+          iniziare se non bastano.</td></tr>
+        <tr><th>Disco</th><td>3 GB per l'ambiente di calcolo e 33 GB per il modello, meglio
+          su SSD: da un disco meccanico il caricamento passa da 40 secondi a un'ora.</td></tr>
+        <tr><th>Rete</th><td>Solo per i download iniziali e per controllare gli aggiornamenti.</td></tr>
+        <tr><th>Windows</th><td>10 o 11 a 64 bit. Python non serve: se manca, il programma ne
+          prepara una copia sua senza toccare quello che hai.</td></tr>
+      </table>
+    </div>
   </section>
 
-  <section id="installazione">
-    <h2>Installazione</h2>
-    <p>Scarica l'installer ed eseguilo. Al primo avvio il programma prepara da solo
-       l'ambiente di calcolo (PyTorch e diffusers, circa 3 GB); il modello viene scaricato
-       alla prima generazione.</p>
-    <p class="note">I file non sono firmati: la prima volta Windows SmartScreen avvisa, si
-       passa con <em>Ulteriori informazioni → Esegui comunque</em>. Le impronte SHA-256 di
-       ogni rilascio sono pubblicate nella pagina della release.</p>
-    <p>Dai sorgenti:</p>
+  <section id="scarica">
+    <div class="wrap">
+      <span class="eyebrow">Installazione</span>
+      <h2>Tre passi, poi fa tutto da solo</h2>
+      <div class="steps">
+        <div class="card"><h3>Scarica l'installer</h3><p>Un file da 45 MB. Windows
+          SmartScreen avvisa perché non è firmato: <em>Ulteriori informazioni → Esegui
+          comunque</em>.</p></div>
+        <div class="card"><h3>Primo avvio</h3><p>Prepara l'ambiente di calcolo (PyTorch e
+          diffusers, circa 3 GB) e ti fa scegliere dove tenere il modello.</p></div>
+        <div class="card"><h3>Prima generazione</h3><p>Scarica il modello da Hugging Face
+          (33 GB, una volta sola) e poi genera. Da lì funziona anche offline.</p></div>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/bdbais/image-creator-free/releases/latest/download/ImageCreatorFree-Setup.exe">Scarica l'installer</a>
+        <a class="btn" href="https://github.com/bdbais/image-creator-free/releases/latest">Novità e impronte SHA-256</a>
+        <a class="btn" href="https://github.com/bdbais/image-creator-free/blob/main/docs/MANUALE.md">Manuale</a>
+      </div>
+      <p class="note">Dai sorgenti:</p>
 <pre><code>git clone https://github.com/bdbais/image-creator-free
 cd image-creator-free
 pip install -r requirements.txt
 python ImageCreatorFree.pyw</code></pre>
-  </section>
-
-  <section id="privacy">
-    <h2>Privacy</h2>
-    <p>Nessun account, nessuna telemetria, nessun server di mezzo. I prompt e le immagini non
-       lasciano il computer. Il programma apre la rete solo per scaricare il modello da
-       Hugging Face e le librerie da PyPI la prima volta.</p>
-    <blockquote>
-      Il modello Qwen-Image-2.1 è distribuito con la Qwen Research License: l'uso è
-      consentito per ricerca e valutazione, non per scopi commerciali. Questo programma è
-      open source (MIT) e non ridistribuisce il modello: lo scarichi tu, da Hugging Face.
-    </blockquote>
-  </section>
-
-  <section class="support" id="sostieni">
-    <div>
-      <h2>Sostieni il progetto</h2>
-      <p>Image Creator Free è gratuito e open source, e lo resterà. Se ti fa risparmiare
-         tempo, puoi offrire un caffè a chi lo mantiene. Nessun obbligo: nel programma non
-         cambia niente.</p>
-      <p><a class="btn coffee" href="https://paypal.me/bellizia">☕&nbsp; Offri un caffè con PayPal</a></p>
     </div>
   </section>
 
+  <section id="privacy">
+    <div class="wrap">
+      <span class="eyebrow">Privacy e licenze</span>
+      <h2>Quello che fai resta tuo</h2>
+      <p class="lead">Nessun account, nessuna telemetria, nessun server di mezzo. Il programma
+        va in rete solo per scaricare modello e librerie la prima volta e per sapere se c'è
+        una versione nuova.</p>
+      <blockquote>Il modello Qwen-Image-2.1 è distribuito con la Qwen Research License: l'uso
+        è consentito per ricerca e valutazione, non per scopi commerciali. Image Creator Free è
+        open source (MIT) e non ridistribuisce il modello: lo scarichi tu, da Hugging Face.</blockquote>
+    </div>
+  </section>
+
+  <section class="support" id="sostieni">
+    <div class="wrap">
+      <h2>Ti piace? Dimmelo</h2>
+      <p class="lead">È gratuito e resterà così. Idee, errori e richieste sono benvenuti su
+        GitHub; se ti fa risparmiare tempo, puoi offrire un caffè.</p>
+      <div class="actions">
+        <a class="btn" href="https://github.com/bdbais/image-creator-free/issues/new">Lascia un feedback</a>
+        <a class="btn coffee" href="https://paypal.me/bellizia">☕ Offri un caffè</a>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <p>
-      <a href="https://bais.info/">bais.info</a> ·
+    <p><a href="https://bais.info/">bais.info</a> ·
       <a href="https://github.com/bdbais/image-creator-free">GitHub</a> ·
       <a href="https://huggingface.co/Qwen/Qwen-Image-2.1">Il modello su Hugging Face</a> ·
-      <a href="https://paypal.me/bellizia">Sostieni</a>
-    </p>
+      <a href="https://paypal.me/bellizia">Sostieni</a></p>
     <p>Codice MIT. Built with Qwen. I pesi del modello restano di Hangzhou Tongyi Laboratory,
-       sotto Qwen Research License.</p>
+      sotto Qwen Research License.</p>
   </div>
 </footer>
 

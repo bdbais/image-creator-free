@@ -10,7 +10,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
-    QAction, QDesktopServices, QGuiApplication, QIcon, QImageReader, QPixmap,
+    QAction, QDesktopServices, QGuiApplication, QIcon, QImageReader, QPainter, QPixmap,
 )
 from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout, QInputDialog,
@@ -1110,7 +1110,16 @@ def _thumbnail(path: str, size: int) -> QIcon | None:
         reader.setScaledSize(QSize(max(1, int(original.width() * scala)),
                                    max(1, int(original.height() * scala))))
     image = reader.read()
-    return None if image.isNull() else QIcon(QPixmap.fromImage(image))
+    if image.isNull():
+        return None
+    # Centrata su un quadrato trasparente: in elenco i testi restano allineati
+    # anche quando le immagini hanno proporzioni diverse.
+    quadro = QPixmap(size, size)
+    quadro.fill(Qt.transparent)
+    pittore = QPainter(quadro)
+    pittore.drawImage((size - image.width()) // 2, (size - image.height()) // 2, image)
+    pittore.end()
+    return QIcon(quadro)
 
 
 def _field(label: str, widget: QWidget, stretch: int = 0):

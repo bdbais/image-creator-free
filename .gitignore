@@ -10,3 +10,4 @@ installer/Output/
 .vscode/
 site/node_modules/
 site/.wrangler/
+.claude/
