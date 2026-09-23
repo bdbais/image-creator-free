@@ -80,6 +80,39 @@
       "source": "image-creator-free"
     },
     {
+      "id": "colora-bn",
+      "group": "Restauro foto",
+      "title_it": "Colora una foto in bianco e nero",
+      "title_en": "Colorize a black-and-white photo",
+      "mode": "edit",
+      "refs": 1,
+      "aspect": "3:4",
+      "prompt": "Colorize this black-and-white photograph so it looks like a real colour photograph taken at the same time. Keep every detail exactly as it is: faces, expressions, hair, pose, clothing, objects, background, lighting, framing and sharpness. Only add colour. Use natural, historically plausible colours for the period and place: realistic skin tones with subtle variation, natural hair and eye colours, fabrics and materials that match their texture, a believable sky and vegetation. Soft and slightly muted like colour film, balanced white point, no oversaturation, no colour bleeding across edges, no painted or cartoon look.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "colora-bn-colori-scelti",
+      "group": "Restauro foto",
+      "title_it": "Colora B/N con i colori che scegli tu",
+      "title_en": "Colorize B/W with the colours you choose",
+      "mode": "edit",
+      "refs": 1,
+      "aspect": "3:4",
+      "prompt": "Colorize this black-and-white photograph as a natural colour photograph of the same moment, keeping faces, pose, clothing, background, lighting and framing exactly as they are. Use these colours (change them to what you remember): eyes light blue, hair dark chestnut brown, dress deep bottle green, necklace ivory pearls, background warm beige wall, skin fair with a light rosy tone. Everything not listed gets natural, period-appropriate colours. Soft, realistic colour-film look, no oversaturation, no colour bleeding across edges.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "colora-bn-da-foto-a-colori",
+      "group": "Restauro foto",
+      "title_it": "Colora B/N con una foto a colori della persona",
+      "title_en": "Colorize B/W from a colour photo of the person",
+      "mode": "edit",
+      "refs": 2,
+      "aspect": "3:4",
+      "prompt": "Colorize the black-and-white photograph in <image1> as a natural colour photograph of the same moment. <image2> is a colour photograph of the same person: take from it only the true skin tone, eye colour, hair colour and lip colour, and apply them to the person in <image1>. Keep the face, expression, age, pose, clothing, background, lighting and framing of <image1> exactly as they are; do not copy anything else from <image2>. Give clothing and background natural, period-appropriate colours. Soft realistic colour-film look, no oversaturation, no colour bleeding across edges.",
+      "source": "image-creator-free"
+    },
+    {
       "id": "complessa-mercato-napoli",
       "group": "Scene complesse",
       "title_it": "Mercato notturno con insegne scritte",

@@ -67,7 +67,8 @@ che la scheda non regge.
   per rigenerare con parametri diversi senza toccare l'originale, oppure crea un progetto
   nuovo da una singola immagine, con il suo seed.
 - **Esempi**: i prompt che hai già usato, scene complesse, restauro di foto antiche o
-  rovinate (anche con più foto della stessa persona per ricostruire il volto) e i 40 esempi
+  rovinate (anche con più foto della stessa persona per ricostruire il volto), colorazione
+  di foto in bianco e nero e i 40 esempi
   ufficiali della scheda del modello e della demo Hugging Face di Qwen.
 - **Si aggiorna da solo**: all'avvio controlla se c'è una versione nuova e mostra le novità.
 - **Galleria locale** con seed, passi e parametri salvati dentro il PNG: "Riusa i parametri"

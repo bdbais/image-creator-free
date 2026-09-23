@@ -72,6 +72,12 @@ restaurare; le altre sono foto della **stessa persona**, usate solo per ricostru
 volto dove l'originale è rovinato, sfocato o mancante. Più sono simili per età e
 angolazione, meglio funziona. Si può restaurare restando in bianco e nero o colorare.
 
+Per **colorare** una foto in bianco e nero ci sono tre esempi: colori automatici,
+plausibili per l'epoca; colori scelti da te, scritti nel prompt (occhi, capelli,
+abiti, sfondo: cambia quelli dell'esempio con quelli che ricordi); oppure presi da
+una foto a colori della stessa persona, messa come seconda immagine. La foto non
+cambia: si aggiunge solo il colore.
+
 ## Qualità, formati e memoria
 
 | Livello | Risoluzione (1:1) | Passi |

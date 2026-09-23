@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1 - 2026-09-23
+
+- Colorazione di foto in bianco e nero, tra gli esempi di restauro: con colori
+  automatici, con i colori che scegli tu (occhi, capelli, abiti, sfondo) o presi
+  da una foto a colori della stessa persona.
+- Nell'elenco dei progetti le miniature sono allineate anche quando le immagini
+  hanno proporzioni diverse.
+
 ## 1.1.0 - 2026-09-23
 
 - Progetti: ogni progetto ricorda prompt, parametri, immagini di riferimento e
