@@ -50,6 +50,8 @@ class MainWindow(QMainWindow):
         # nel frattempo se ne apre un altro.
         self.job_project = ""
         self.job_params: dict = {}
+        self.loaded_kind = ""        # "image" o "video": quale modello ha in memoria il worker
+        self._pip = None
 
         self.setWindowTitle("%s - Qwen-Image-2.1 in locale" % APP_NAME)
         self.resize(1360, 900)
@@ -198,10 +200,16 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _project_caption(project: projects.Project) -> str:
-        n = len(projects.images_on_disk(project))
+        voci = projects.images_on_disk(project)
+        video = sum(1 for e in voci if e.get("meta", {}).get("kind") == "video")
+        immagini = len(voci) - video
+        parti = []
+        if immagini or not video:
+            parti.append("1 immagine" if immagini == 1 else "%d immagini" % immagini)
+        if video:
+            parti.append("1 video" if video == 1 else "%d video" % video)
         quando = project.updated[:16].replace("-", "/")
-        return "%s\n%s · %s" % (project.name, "1 immagine" if n == 1
-                                else "%d immagini" % n, quando)
+        return "%s\n%s · %s" % (project.name, ", ".join(parti), quando)
 
     def _on_project_selected(self):
         items = self.project_list.selectedItems()
@@ -247,6 +255,8 @@ class MainWindow(QMainWindow):
             "seed": seed,
             "batch": self.batch_spin.value(),
             "refs": self.refs.paths(),
+            "kind": self.kind_box.currentData() or "image",
+            "duration": self.duration_spin.value(),
         }
 
     def _apply_params(self, params: dict):
@@ -262,6 +272,9 @@ class MainWindow(QMainWindow):
         seed = params.get("seed")
         self.seed_edit.setText("" if seed is None else str(seed))
         self.batch_spin.setValue(int(params.get("batch") or 1))
+        index = self.kind_box.findData(params.get("kind") or "image")
+        self.kind_box.setCurrentIndex(index if index >= 0 else 0)
+        self.duration_spin.setValue(float(params.get("duration") or 3))
         self.refs.clear()
         self.refs.add_paths([p for p in params.get("refs") or [] if Path(p).exists()])
 
@@ -425,12 +438,16 @@ class MainWindow(QMainWindow):
         if not preset:
             return
         self.prompt_edit.setPlainText(preset.prompt)
+        index = self.kind_box.findData(getattr(preset, "kind", "image") or "image")
+        self.kind_box.setCurrentIndex(index if index >= 0 else 0)
         index = self.aspect_box.findText(preset.aspect)
         if index >= 0:
             self.aspect_box.setCurrentIndex(index)
         if preset.refs and self.refs.count() == 0:
             self.tabs.setCurrentIndex(1)
             self.status_label.setText(
+                "Questo esempio parte da una foto: aggiungila qui sotto."
+                if getattr(preset, "kind", "") == "video" else
                 "Questo esempio lavora su %d immagini: aggiungile qui sotto." % preset.refs)
         self.prompt_edit.setFocus()
 
@@ -476,6 +493,22 @@ class MainWindow(QMainWindow):
         grid.setSpacing(18)
         grid.setAlignment(Qt.AlignTop)
 
+        self.kind_box = QComboBox()
+        self.kind_box.addItem("Immagine", "image")
+        self.kind_box.addItem("Video", "video")
+        self.kind_box.setToolTip(
+            "Video: clip di qualche secondo con Wan2.2 (modello a parte, circa 34 GB).\n"
+            "Con un'immagine di riferimento anima quella foto.")
+        self.kind_box.currentIndexChanged.connect(self._on_kind_changed)
+
+        self.duration_spin = QDoubleSpinBox()
+        self.duration_spin.setRange(1.0, 5.0)
+        self.duration_spin.setSingleStep(0.5)
+        self.duration_spin.setDecimals(1)
+        self.duration_spin.setSuffix(" s")
+        self.duration_spin.setValue(3.0)
+        self.duration_spin.valueChanged.connect(self._update_size_label)
+
         self.aspect_box = QComboBox()
         self.aspect_box.addItems(list(config.ASPECT_RATIOS))
         if self.settings.aspect in config.ASPECT_RATIOS:
@@ -497,16 +530,20 @@ class MainWindow(QMainWindow):
         self.seed_edit.setPlaceholderText("casuale")
         self.seed_edit.setFixedWidth(120)
 
+        grid.addLayout(_field("Cosa", self.kind_box))
         grid.addLayout(_field("Formato", self.aspect_box))
         grid.addLayout(_field("Qualita'", self.quality_box))
-        grid.addLayout(_field("Quante immagini", self.batch_spin))
+        self.batch_field = _field("Quante immagini", self.batch_spin)
+        grid.addLayout(self.batch_field)
+        self.duration_field = _field("Durata", self.duration_spin)
+        grid.addLayout(self.duration_field)
         grid.addLayout(_field("Seed", self.seed_edit))
 
         self.size_label = QLabel()
         self.size_label.setObjectName("muted")
         self.size_label.setWordWrap(True)
         grid.addLayout(_field("Risoluzione", self.size_label), 1)
-        self._update_size_label()
+        self._on_kind_changed()
         return page
 
     def _refs_tab(self) -> QWidget:
@@ -597,7 +634,7 @@ class MainWindow(QMainWindow):
         self.gallery.setMovement(QListWidget.Static)
         self.gallery.itemSelectionChanged.connect(self._show_selected_image)
         self.gallery.itemDoubleClicked.connect(
-            lambda item: self._open_path(Path(item.data(Qt.UserRole)["path"])))
+            lambda item: self._open_entry(item.data(Qt.UserRole)))
         box.addWidget(self.gallery)
 
         actions = QHBoxLayout()
@@ -657,12 +694,26 @@ class MainWindow(QMainWindow):
             return
 
         quality = self.quality_box.currentData()
-        steps = self.steps_spin.value() or config.QUALITY[quality]["steps"]
-        width, height = config.resolution_for(self.aspect_box.currentText(), quality)
-
-        if not self._conferma_se_troppo_grande(width, height):
-            return
-        if not self.client.model_loaded and not self._conferma_memoria():
+        video = self._is_video()
+        if video:
+            # I pacchetti per salvare l'MP4 mancano negli ambienti creati prima
+            # della 1.2: si installano adesso, poi si riparte da qui.
+            mancanti = runtime.missing_packages()
+            if mancanti:
+                self._install_packages(mancanti, then=self.generate)
+                return
+            if not self._conferma_download_video():
+                return
+            steps = self.steps_spin.value() or config.VIDEO_QUALITY[quality]["steps"]
+            width, height = config.video_resolution(self.aspect_box.currentText(), quality)
+        else:
+            steps = self.steps_spin.value() or config.QUALITY[quality]["steps"]
+            width, height = config.resolution_for(self.aspect_box.currentText(), quality)
+            if not self._conferma_se_troppo_grande(width, height):
+                return
+        kind = "video" if video else "image"
+        caricato = self.client.model_loaded and self.loaded_kind == kind
+        if not caricato and not self._conferma_memoria(kind):
             return
 
         # Ogni generazione appartiene a un progetto: se non ce n'e' uno aperto,
@@ -699,9 +750,14 @@ class MainWindow(QMainWindow):
             "out_dir": str(projects.output_dir(self.project, self.settings)),
             "basename": time.strftime("%Y%m%d-%H%M%S"),
         }
+        if video:
+            request.update(kind="video", batch=1, guidance_scale=5.0,
+                           video_model=self.settings.video_model_id,
+                           num_frames=config.video_frames(params["duration"]),
+                           fps=config.VIDEO_FPS, images=refs[:1])
         self.job_project = self.project.id
         self.job_params = params
-        self.pending = self.batch_spin.value()
+        self.pending = 1 if video else self.batch_spin.value()
         self.seen_progress = False
         self.job_started = time.time()
         self.current_job = self.client.generate(request)
@@ -736,10 +792,19 @@ class MainWindow(QMainWindow):
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         return risposta == QMessageBox.Yes
 
-    def _memoria_per_il_modello(self) -> tuple[float, float]:
-        """(GB che servono, GB liberi): il modello passa tutto dalla RAM."""
-        serve = runtime.model_size_on_disk(self.settings, self.settings.model_id)
-        return serve + 2 if serve else 0.0, config.free_memory_gb()
+    def _memoria_per_il_modello(self, kind: str = "image") -> tuple[float, float]:
+        """(GB che servono, GB liberi): il modello passa tutto dalla RAM.
+
+        Il modello video e' salvato in parte a 32 bit ma si carica a 16: in
+        memoria ne serve circa due terzi della misura su disco.
+        """
+        if kind == "video":
+            su_disco = runtime.model_size_on_disk(self.settings, self.settings.video_model_id)
+            serve = su_disco * 0.7 + 4 if su_disco else 0.0
+        else:
+            su_disco = runtime.model_size_on_disk(self.settings, self.settings.model_id)
+            serve = su_disco + 2 if su_disco else 0.0
+        return serve, config.free_memory_gb()
 
     def _testo_memoria(self, serve: float, libera: float) -> str:
         return (
@@ -749,9 +814,9 @@ class MainWindow(QMainWindow):
             "oppure aumenta il file di paging di Windows su un disco con spazio "
             "libero." % (serve, libera))
 
-    def _conferma_memoria(self) -> bool:
+    def _conferma_memoria(self, kind: str = "image") -> bool:
         """Se la memoria non basta il processo muore senza messaggi: lo si dice prima."""
-        serve, libera = self._memoria_per_il_modello()
+        serve, libera = self._memoria_per_il_modello(kind)
         if not serve or not libera or libera >= serve:
             return True
         risposta = QMessageBox.question(
@@ -759,6 +824,59 @@ class MainWindow(QMainWindow):
             self._testo_memoria(serve, libera) + "\n\nProvo lo stesso?",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         return risposta == QMessageBox.Yes
+
+    def _conferma_download_video(self) -> bool:
+        """Il primo video scarica circa 34 GB: lo si dice prima, con lo spazio libero."""
+        if runtime.model_size_on_disk(self.settings, self.settings.video_model_id) >= 30:
+            return True
+        cartella = runtime.model_cache_dir(self.settings)
+        libero = config.free_disk_gb(cartella)
+        testo = ("Il primo video scarica il modello Wan2.2 (circa 34 GB) in:\n%s\n\n"
+                 "Spazio libero: %.0f GB." % (cartella, libero))
+        if libero and libero < 40:
+            testo += "\n\nNon basta: libera spazio o cambia cartella nelle impostazioni."
+            QMessageBox.warning(self, "Spazio insufficiente per il modello video", testo)
+            return False
+        risposta = QMessageBox.question(
+            self, "Scarico il modello video?", testo + "\n\nProcedo?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        return risposta == QMessageBox.Yes
+
+    def _install_packages(self, packages: list[str], then=None):
+        """pip install nell'ambiente di calcolo, senza bloccare la finestra."""
+        from PySide6.QtCore import QProcess
+
+        if self._pip is not None:
+            return
+        self.status_label.setText("Installo i componenti per i video (%s)..." % ", ".join(packages))
+        self.bar.setVisible(True)
+        self.bar.setRange(0, 0)
+        self.generate_btn.setEnabled(False)
+        comando = runtime.pip_install_command(packages)
+        proc = QProcess(self)
+        proc.setProgram(comando[0])
+        proc.setArguments(comando[1:])
+        proc.setProcessChannelMode(QProcess.MergedChannels)
+        proc.readyReadStandardOutput.connect(
+            lambda: [self.on_log(r) for r in bytes(proc.readAllStandardOutput())
+                     .decode("utf-8", "replace").splitlines() if r.strip()])
+
+        def finito(codice, _stato):
+            self._pip = None
+            self.bar.setVisible(False)
+            self.generate_btn.setEnabled(True)
+            if codice == 0 and not runtime.missing_packages():
+                self.status_label.setText("Componenti per i video installati.")
+                if then:
+                    then()
+            else:
+                QMessageBox.warning(self, "Installazione non riuscita",
+                                    "Non riesco a installare %s nell'ambiente di calcolo. "
+                                    "Il registro (Ctrl+L) dice perché." % ", ".join(packages))
+
+        proc.finished.connect(finito)
+        self._pip = proc
+        proc.start()
 
     def cancel(self):
         self.client.cancel()
@@ -771,6 +889,7 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- eventi
     def on_loaded(self, event: dict):
+        self.loaded_kind = event.get("kind") or "image"
         self.model_state.setText("Modello pronto - %s" % event.get("device", ""))
         if not self.client.busy:
             self.status_label.setText("Modello caricato.")
@@ -790,6 +909,7 @@ class MainWindow(QMainWindow):
     def on_image(self, event: dict):
         entry = {
             "path": event.get("path", ""),
+            "poster": event.get("poster", ""),
             "seed": event.get("seed"),
             "elapsed": event.get("elapsed"),
             "meta": event.get("meta", {}),
@@ -875,6 +995,7 @@ class MainWindow(QMainWindow):
         self.log_dialog.raise_()
 
     def on_worker_stopped(self, code: int):
+        self.loaded_kind = ""
         self.model_state.setText("Modello non caricato")
         self.generate_btn.setEnabled(True)
         self.cancel_btn.setEnabled(False)
@@ -884,7 +1005,7 @@ class MainWindow(QMainWindow):
                 "Il processo di generazione si è chiuso (codice %s)." % code)
         if code in (0xC0000005, -0x3FFFFFFB):
             # Accesso non valido in torch: in pratica, memoria finita durante il carico.
-            serve, libera = self._memoria_per_il_modello()
+            serve, libera = self._memoria_per_il_modello(self.job_params.get("kind") or "image")
             QMessageBox.warning(
                 self, "La generazione si è interrotta",
                 "Il processo di generazione si è chiuso all'improvviso "
@@ -928,7 +1049,7 @@ class MainWindow(QMainWindow):
         path = entry.get("path", "")
         if not path or not Path(path).exists():
             return
-        icon = _thumbnail(path, 208)
+        icon = _thumbnail(entry.get("poster") or path, 208)
         if icon is None:
             return
         item = QListWidgetItem()
@@ -945,7 +1066,7 @@ class MainWindow(QMainWindow):
         if not items:
             return
         entry = items[0].data(Qt.UserRole)
-        pixmap = QPixmap(entry["path"])
+        pixmap = QPixmap(entry.get("poster") or entry["path"])
         if pixmap.isNull():
             return
         area = self.preview.size()
@@ -953,6 +1074,13 @@ class MainWindow(QMainWindow):
             max(120, int(area.width() * 0.98)), max(120, int(area.height() * 0.98)),
             Qt.KeepAspectRatio, Qt.SmoothTransformation))
         meta = entry.get("meta", {})
+        if meta.get("kind") == "video":
+            self.meta_label.setText(
+                "▶ Video %s · %s s, %s fotogrammi · seed %s · %s passi · generato in %s s · "
+                "doppio clic per guardarlo" % (
+                    meta.get("size", "?"), meta.get("seconds", "?"), meta.get("frames", "?"),
+                    entry.get("seed"), meta.get("steps", "?"), entry.get("elapsed", "?")))
+            return
         self.meta_label.setText("%s · seed %s · %s passi · %s s · %s" % (
             meta.get("size", "?"), entry.get("seed"), meta.get("steps", "?"),
             entry.get("elapsed", "?"), Path(entry["path"]).name))
@@ -1012,10 +1140,27 @@ class MainWindow(QMainWindow):
         self._show_selected_image()
 
     # =================================================================== varie
+    def _is_video(self) -> bool:
+        return self.kind_box.currentData() == "video"
+
     def _update_size_label(self):
         quality = self.quality_box.currentData() or "standard"
+        if self._is_video():
+            width, height = config.video_resolution(self.aspect_box.currentText(), quality)
+            frames = config.video_frames(self.duration_spin.value())
+            self.size_label.setText("%d x %d px · %d fotogrammi a %d al secondo" % (
+                width, height, frames, config.VIDEO_FPS))
+            return
         width, height = config.resolution_for(self.aspect_box.currentText(), quality)
         self.size_label.setText("%d x %d px" % (width, height))
+
+    def _on_kind_changed(self):
+        video = self._is_video()
+        _show_field(self.batch_field, not video)
+        _show_field(self.duration_field, video)
+        if getattr(self, "generate_btn", None) is not None:
+            self.generate_btn.setText("Genera il video" if video else "Genera")
+        self._update_size_label()
 
     def _update_generate_state(self):
         self.generate_btn.setEnabled(not self.client.busy)
@@ -1070,6 +1215,14 @@ class MainWindow(QMainWindow):
             return
         aggiornamento.proponi(self, info)
 
+    def _open_entry(self, entry: dict):
+        """Doppio clic in galleria: i video si guardano, le immagini si mostrano nella cartella."""
+        path = Path(entry.get("path", ""))
+        if path.suffix.lower() == ".mp4" and path.exists():
+            os.startfile(str(path))  # noqa: S606 - lettore video predefinito
+        else:
+            self._open_path(path)
+
     def _open_images_folder(self):
         """La cartella del progetto aperto, se ha gia' immagini; altrimenti quella generale."""
         if self.project is not None:
@@ -1120,6 +1273,14 @@ def _thumbnail(path: str, size: int) -> QIcon | None:
     pittore.drawImage((size - image.width()) // 2, (size - image.height()) // 2, image)
     pittore.end()
     return QIcon(quadro)
+
+
+def _show_field(layout, visible: bool):
+    """Mostra o nasconde etichetta e campo creati da _field."""
+    for i in range(layout.count()):
+        widget = layout.itemAt(i).widget()
+        if widget is not None:
+            widget.setVisible(visible)
 
 
 def _field(label: str, widget: QWidget, stretch: int = 0):

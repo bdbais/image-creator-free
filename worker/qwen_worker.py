@@ -19,6 +19,9 @@ import traceback
 from queue import Queue
 
 MODEL_ID = os.environ.get("ICF_MODEL_ID", "Qwen/Qwen-Image-2.1")
+VIDEO_MODEL_ID = os.environ.get("ICF_VIDEO_MODEL_ID", "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+VIDEO_NEGATIVE = ("Bright tones, overexposed, static, blurred details, subtitles, worst "
+                  "quality, low quality, deformed, disfigured, extra fingers, jpeg artifacts")
 
 _out_lock = threading.Lock()
 _cancel = threading.Event()
@@ -42,6 +45,25 @@ class Engine:
         self.memory_mode = "auto"
         self.device = "cpu"
         self.vram_gb = 0.0
+        # Il modello video vive al posto di quello per le immagini: tutti e due
+        # insieme non stanno nella RAM di un PC normale.
+        self.video_pipe = None
+        self.video_model = ""
+        self._video_prompts = {}
+
+    def _free(self, which):
+        import gc
+        import torch
+
+        if which == "image" and self.pipe is not None:
+            self.pipe = None
+        elif which == "video" and self.video_pipe is not None:
+            self.video_pipe = None
+        else:
+            return
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     # ---------------------------------------------------------------- caricamento
     def probe(self):
@@ -77,6 +99,7 @@ class Engine:
                  device=self.device, cached=True)
             return
 
+        self._free("video")
         info = self.probe()
         mode = self._resolve_mode(memory_mode)
         dtype = torch.bfloat16 if info["cuda"] else torch.float32
@@ -131,6 +154,8 @@ class Engine:
         import torch
         from PIL import Image
 
+        if req.get("kind") == "video":
+            return self.generate_video(req)
         if self.pipe is None:
             self.load(req.get("model", MODEL_ID), req.get("memory_mode", "auto"))
 
@@ -221,6 +246,215 @@ class Engine:
         cancelled = _cancel.is_set()
         _cancel.clear()
         emit("done", id=job, cancelled=cancelled)
+
+    # ---------------------------------------------------------------- video
+    def load_video(self, model_id=VIDEO_MODEL_ID):
+        """Wan2.2 TI2V-5B: un solo modello per testo->video e foto->video.
+
+        Con meno di 24 GB di VRAM (misurato su una RTX 4070 da 12 GB):
+        - il text encoder (UMT5-XXL, 11 GB) resta sulla CPU: portarlo sulla
+          scheda, anche a gruppi, la riempie e da li' in poi il driver sposta
+          memoria nella RAM di sistema, e ogni passo passa da 3 a 180 secondi;
+        - il transformer sta tutto in VRAM con i pesi salvati in fp8 e il calcolo
+          in bf16: 5 GB invece di 10, nessun trasferimento durante i passi;
+        - il VAE sta sulla GPU in fp32, come consiglia la scheda del modello,
+          con la decodifica a tessere. Picco misurato a 480p: 9,1 GB.
+        """
+        import torch
+
+        if self.video_pipe is not None and self.video_model == model_id:
+            emit("loaded", model=model_id, kind="video", device=self.device, cached=True)
+            return
+        self._free("image")
+        info = self.probe()
+        emit("status", stage="load", model=model_id,
+             msg="Carico il modello video (al primo avvio scarica circa 34 GB)...")
+
+        from diffusers import AutoModel, WanPipeline
+        from transformers import UMT5EncoderModel
+
+        # Dalla copia locale, se c'e': diffusers per i pesi divisi in piu' file
+        # chiede comunque l'elenco al Hub, e senza rete il caricamento fallisce.
+        richiesto = model_id
+        model_id = _local_snapshot(model_id)
+        text_encoder = UMT5EncoderModel.from_pretrained(
+            model_id, subfolder="text_encoder", torch_dtype=torch.bfloat16)
+        vae = AutoModel.from_pretrained(model_id, subfolder="vae", torch_dtype=torch.float32)
+        transformer = AutoModel.from_pretrained(
+            model_id, subfolder="transformer", torch_dtype=torch.bfloat16)
+
+        if not info["cuda"]:
+            pipe = WanPipeline.from_pretrained(model_id, vae=vae, transformer=transformer,
+                                               text_encoder=text_encoder,
+                                               torch_dtype=torch.float32)
+            self.device = "cpu"
+        elif info["vram_gb"] >= 24:
+            pipe = WanPipeline.from_pretrained(model_id, vae=vae, transformer=transformer,
+                                               text_encoder=text_encoder,
+                                               torch_dtype=torch.bfloat16)
+            pipe.to("cuda")
+            self.device = "cuda"
+        else:
+            transformer.enable_layerwise_casting(storage_dtype=torch.float8_e4m3fn,
+                                                 compute_dtype=torch.bfloat16)
+            pipe = WanPipeline.from_pretrained(model_id, vae=vae, transformer=transformer,
+                                               text_encoder=text_encoder,
+                                               torch_dtype=torch.bfloat16)
+            pipe.transformer.to("cuda")
+            pipe.vae.to("cuda")
+            self.device = "cuda (transformer fp8, testo su CPU)"
+        _try(getattr(pipe.vae, "enable_tiling", None))
+        self.video_pipe = pipe
+        self.video_model = richiesto
+        self._video_prompts = {}
+        emit("loaded", model=richiesto, kind="video", device=self.device,
+             vram_gb=info["vram_gb"], cached=False)
+
+    def _encode_video_prompt(self, prompt, negative):
+        """Codifica il prompt dove sta il text encoder e lo tiene per le clip successive."""
+        import torch
+
+        chiave = (prompt, negative)
+        if chiave not in self._video_prompts:
+            pipe = self.video_pipe
+            dispositivo = next(pipe.text_encoder.parameters()).device
+            with torch.no_grad():
+                positivo, negativo = pipe.encode_prompt(
+                    prompt=prompt, negative_prompt=negative,
+                    do_classifier_free_guidance=True, device=dispositivo)
+            if len(self._video_prompts) > 8:
+                self._video_prompts.clear()
+            self._video_prompts[chiave] = (positivo, negativo)
+        positivo, negativo = self._video_prompts[chiave]
+        dove = next(self.video_pipe.transformer.parameters()).device
+        return positivo.to(dove), negativo.to(dove)
+
+    def generate_video(self, req):
+        import random
+
+        import torch
+        from PIL import Image
+
+        model_id = req.get("video_model") or VIDEO_MODEL_ID
+        self.load_video(model_id)
+        job = req.get("id", "job")
+        steps = int(req.get("steps") or 30)
+        # Wan vuole lati multipli di 32 e 4k+1 fotogrammi: meglio correggere qui
+        # che lasciare che la pipeline arrotondi in silenzio.
+        width = max(256, int(req.get("width", 832)) // 32 * 32)
+        height = max(256, int(req.get("height", 480)) // 32 * 32)
+        frames = max(5, (int(req.get("num_frames", 73)) - 1) // 4 * 4 + 1)
+        fps = int(req.get("fps", 24))
+        seed = req.get("seed")
+        run_seed = int(seed) if seed not in (None, "") else random.randint(0, 2 ** 32 - 1)
+        out_dir = req.get("out_dir") or os.getcwd()
+        os.makedirs(out_dir, exist_ok=True)
+        basename = req.get("basename") or time.strftime("%Y%m%d-%H%M%S")
+
+        emit("status", id=job, stage="text",
+             msg="Leggo il prompt (sulla CPU, circa un minuto la prima volta)...")
+        positivo, negativo = self._encode_video_prompt(
+            req.get("prompt", ""), req.get("negative_prompt") or VIDEO_NEGATIVE)
+        kwargs = {
+            "prompt_embeds": positivo, "negative_prompt_embeds": negativo,
+            "height": height, "width": width, "num_frames": frames,
+            "num_inference_steps": steps,
+            "guidance_scale": float(req.get("guidance_scale", 5.0)),
+            "generator": torch.Generator("cpu").manual_seed(run_seed),
+            "callback_on_step_end": _make_callback(job, 0, 1, steps),
+        }
+        pipe = self.video_pipe
+        refs = [p for p in req.get("images", []) or [] if os.path.exists(p)]
+        if refs:
+            from diffusers import WanImageToVideoPipeline
+
+            # Stessi pesi, altra pipeline: niente da ricaricare. La configurazione
+            # va ripresa: con expand_timesteps (Wan2.2 TI2V) la foto diventa il
+            # primo fotogramma latente; senza, la pipeline la prepara come Wan2.1
+            # e il transformer riceve 100 canali invece di 48.
+            base = self.video_pipe
+            pipe = WanImageToVideoPipeline(
+                **base.components,
+                boundary_ratio=base.config.get("boundary_ratio"),
+                expand_timesteps=bool(base.config.get("expand_timesteps", False)))
+            kwargs["image"] = _fit(Image.open(refs[0]).convert("RGB"), width, height)
+
+        started = time.time()
+        emit("progress", id=job, index=0, batch=1, step=0, total=steps,
+             msg="Video: %dx%d, %d fotogrammi" % (width, height, frames))
+        try:
+            result = pipe(**_filter_kwargs(pipe, kwargs))
+        except Cancelled:
+            emit("status", id=job, msg="Generazione annullata.", stage="cancelled")
+            _cancel.clear()
+            emit("done", id=job, cancelled=True)
+            return
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            emit("error", id=job, kind="oom", msg=(
+                "VRAM esaurita durante il video. Riduci risoluzione o durata."))
+            emit("done", id=job, failed=True)
+            return
+        except Exception as exc:  # noqa: BLE001
+            emit("error", id=job, msg=str(exc), trace=traceback.format_exc())
+            emit("done", id=job, failed=True)
+            return
+
+        clip = result.frames[0]
+        path = os.path.join(out_dir, basename + ".mp4")
+        from diffusers.utils import export_to_video
+        export_to_video(clip, path, fps=fps)
+        meta = {
+            "kind": "video",
+            "prompt": req.get("prompt", ""),
+            "negative_prompt": req.get("negative_prompt", ""),
+            "seed": run_seed, "steps": steps,
+            "guidance_scale": kwargs["guidance_scale"],
+            "model": model_id,
+            "size": "%dx%d" % (width, height),
+            "frames": len(clip), "fps": fps,
+            "seconds": round(len(clip) / float(fps), 1),
+            "references": len(refs),
+            "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        # Il fotogramma centrale fa da copertina in galleria e porta i parametri.
+        poster = os.path.join(out_dir, basename + ".png")
+        _save_png(_to_pil(clip[len(clip) // 2]), poster, meta)
+        emit("image", id=job, index=0, path=path, poster=poster, seed=run_seed,
+             elapsed=round(time.time() - started, 1), meta=meta)
+        emit("done", id=job, cancelled=False)
+
+
+def _local_snapshot(model_id):
+    """Il percorso della copia gia' scaricata; il nome del repo se non c'e'."""
+    if os.path.isdir(model_id):
+        return model_id
+    try:
+        from huggingface_hub import snapshot_download
+
+        return snapshot_download(model_id, local_files_only=True)
+    except Exception:  # noqa: BLE001 - non scaricato o incompleto: ci pensa from_pretrained
+        return model_id
+
+
+def _fit(image, width, height):
+    """Ritaglia al centro e ridimensiona la foto di partenza alla misura del video."""
+    from PIL import ImageOps
+
+    return ImageOps.fit(image, (width, height))
+
+
+def _to_pil(frame):
+    from PIL import Image
+
+    if isinstance(frame, Image.Image):
+        return frame
+    import numpy as np
+
+    arr = np.asarray(frame)
+    if arr.dtype != np.uint8:
+        arr = (np.clip(arr, 0, 1) * 255).round().astype(np.uint8)
+    return Image.fromarray(arr)
 
 
 def _save_png(image, path, meta):
@@ -352,7 +586,9 @@ def main():
     for req in _incoming():
         cmd = req.get("cmd")
         try:
-            if cmd == "load":
+            if cmd == "load" and req.get("kind") == "video":
+                engine.load_video(req.get("video_model") or VIDEO_MODEL_ID)
+            elif cmd == "load":
                 engine.load(req.get("model", MODEL_ID), req.get("memory_mode", "auto"))
             elif cmd == "generate":
                 _cancel.clear()

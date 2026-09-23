@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 - 2026-09-23
+
+- Video: clip fino a 5 secondi da testo, oppure una foto che prende vita, con
+  Wan2.2 TI2V-5B (Apache-2.0, circa 32 GB, scaricato al primo video). Su una
+  RTX 4070 da 12 GB: 5 secondi a 832x480 in meno di 7 minuti.
+- Nuovi esempi nel gruppo "Video", compreso "Anima un ritratto" da usare dopo un
+  restauro.
+- In galleria i video mostrano il fotogramma centrale; doppio clic per guardarli.
+- I componenti per salvare gli MP4 si installano da soli al primo video.
+
 ## 1.1.1 - 2026-09-23
 
 - Colorazione di foto in bianco e nero, tra gli esempi di restauro: con colori

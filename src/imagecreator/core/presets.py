@@ -19,6 +19,7 @@ class Preset:
     prompt: str
     source: str        # "model-card", "demo-space", "image-creator-free" o "storico"
     group: str = ""    # gruppo esplicito; vuoto = deciso da modo e trasparenza
+    kind: str = "image"    # "image" o "video"
 
     @property
     def label(self) -> str:
@@ -26,6 +27,8 @@ class Preset:
 
     @property
     def badge(self) -> str:
+        if self.kind == "video":
+            return "video da foto" if self.refs else "video"
         if self.mode == "t2i":
             return "testo"
         return "1 immagine" if self.refs == 1 else "%d immagini" % self.refs
@@ -59,6 +62,7 @@ def load() -> list[Preset]:
                 prompt=item.get("prompt", ""),
                 source=item.get("source", ""),
                 group=item.get("group", ""),
+                kind=item.get("kind", "image"),
             ))
     return out
 
@@ -82,7 +86,7 @@ def from_history(limit: int = 40) -> list[Preset]:
     for entry in history.load(500):
         meta = entry.get("meta", {})
         candidati.append((meta.get("created", ""),
-                          {"prompt": meta.get("prompt", ""),
+                          {"prompt": meta.get("prompt", ""), "kind": meta.get("kind", "image"),
                            "refs": [None] * int(meta.get("references") or 0)}))
     candidati.sort(key=lambda c: c[0] or "", reverse=True)
     for _, params in candidati:
@@ -96,7 +100,7 @@ def from_history(limit: int = 40) -> list[Preset]:
         out.append(Preset(id="storico-%d" % len(out), title_it=projects.name_from_prompt(prompt, 7),
                           title_en="", title_zh="", mode="edit" if refs else "t2i",
                           refs=refs, aspect=aspect, prompt=prompt, source="storico",
-                          group=MY_PROMPTS))
+                          group=MY_PROMPTS, kind=params.get("kind") or "image"))
         if len(out) >= limit:
             break
     return out
@@ -108,6 +112,7 @@ MY_PROMPTS = "I tuoi prompt"
 def grouped(presets: list[Preset]) -> dict[str, list[Preset]]:
     groups: dict[str, list[Preset]] = {
         MY_PROMPTS: [],
+        "Video": [],
         "Restauro foto": [],
         "Scene complesse": [],
         "Da testo": [],

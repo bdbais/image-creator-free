@@ -20,12 +20,13 @@ from . import config
 
 # Parametri del modulo che un progetto ricorda.
 PARAM_KEYS = ("prompt", "negative_prompt", "aspect", "quality", "steps",
-              "true_cfg_scale", "seed", "batch", "refs")
+              "true_cfg_scale", "seed", "batch", "refs", "kind", "duration")
 
 
 def default_params() -> dict:
     return {"prompt": "", "negative_prompt": "", "aspect": "1:1", "quality": "standard",
-            "steps": 0, "true_cfg_scale": 4.0, "seed": None, "batch": 1, "refs": []}
+            "steps": 0, "true_cfg_scale": 4.0, "seed": None, "batch": 1, "refs": [],
+            "kind": "image", "duration": 3}
 
 
 @dataclass
@@ -43,7 +44,8 @@ class Project:
         """L'ultima immagine ancora su disco, per la miniatura nell'elenco."""
         for entry in reversed(self.images):
             if Path(entry.get("path", "")).exists():
-                return entry["path"]
+                # Per i video la copertina e' il fotogramma salvato accanto.
+                return entry.get("poster") or entry["path"]
         return ""
 
 

@@ -8,7 +8,7 @@ import sys
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from .. import APP_NAME, MODEL_ID
+from .. import APP_NAME, MODEL_ID, VIDEO_MODEL_ID
 
 IS_FROZEN = getattr(sys, "frozen", False)
 NO_WINDOW_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -173,9 +173,37 @@ def resolution_for(aspect: str, quality: str) -> tuple[int, int]:
     return (max(512, int(w * scale) // 64 * 64), max(512, int(h * scale) // 64 * 64))
 
 
+# Video con Wan2.2 TI2V-5B: 480p e 704p sono le misure della scheda del modello,
+# 24 fotogrammi al secondo. I passi sono meno dei 50 consigliati: su una scheda
+# da 12 GB ogni passo pesa, e la differenza di qualita' e' piccola.
+VIDEO_QUALITY = {
+    "draft": {"pixels": 832 * 480, "steps": 20},
+    "standard": {"pixels": 832 * 480, "steps": 30},
+    "high": {"pixels": 1280 * 704, "steps": 40},
+}
+VIDEO_FPS = 24
+
+
+def video_resolution(aspect: str, quality: str) -> tuple[int, int]:
+    """Stessa proporzione delle immagini, area fissata dalla qualita', lati multipli di 32."""
+    w, h = ASPECT_RATIOS.get(aspect, ASPECT_RATIOS["16:9"])
+    area = VIDEO_QUALITY.get(quality, VIDEO_QUALITY["standard"])["pixels"]
+    ratio = w / h
+    width = round((area * ratio) ** 0.5 / 32) * 32
+    height = round((area / ratio) ** 0.5 / 32) * 32
+    return max(256, width), max(256, height)
+
+
+def video_frames(seconds: float) -> int:
+    """Wan vuole 4k+1 fotogrammi."""
+    frames = int(round(seconds * VIDEO_FPS))
+    return max(5, frames // 4 * 4 + 1)
+
+
 @dataclass
 class Settings:
     model_id: str = MODEL_ID
+    video_model_id: str = VIDEO_MODEL_ID
     runtime_dir: str = ""             # vuoto = dentro %LOCALAPPDATA%
     models_dir: str = ""              # vuoto = cache Hugging Face predefinita
     output_dir: str = ""

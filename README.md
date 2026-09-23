@@ -70,6 +70,8 @@ che la scheda non regge.
   rovinate (anche con più foto della stessa persona per ricostruire il volto), colorazione
   di foto in bianco e nero e i 40 esempi
   ufficiali della scheda del modello e della demo Hugging Face di Qwen.
+- **Video**: clip fino a 5 secondi da testo, oppure una foto che prende vita, con il modello
+  open source Wan2.2 TI2V-5B (Apache-2.0, circa 34 GB, scaricato al primo video).
 - **Si aggiorna da solo**: all'avvio controlla se c'è una versione nuova e mostra le novità.
 - **Galleria locale** con seed, passi e parametri salvati dentro il PNG: "Riusa i parametri"
   rimette tutto com'era.

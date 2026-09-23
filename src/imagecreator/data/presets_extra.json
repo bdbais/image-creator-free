@@ -3,6 +3,78 @@
   "note": "Esempi scritti per Image Creator Free: scene complesse e restauro di foto. Nel restauro la prima immagine è la foto da restaurare, le altre sono foto della stessa persona usate solo come riferimento per il volto.",
   "presets": [
     {
+      "id": "video-cucciolo-prato",
+      "group": "Video",
+      "kind": "video",
+      "title_it": "Cucciolo che corre in un prato",
+      "title_en": "Puppy running through a meadow",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "16:9",
+      "prompt": "A golden retriever puppy runs across a sunlit meadow full of wildflowers toward the camera, ears flapping, grass and petals moving in the breeze, warm late-afternoon light, shallow depth of field, smooth tracking shot, cinematic, realistic motion.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "video-onde-scogli",
+      "group": "Video",
+      "kind": "video",
+      "title_it": "Onde sugli scogli al tramonto",
+      "title_en": "Waves on the rocks at sunset",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "16:9",
+      "prompt": "Waves roll in and crash against dark volcanic rocks on a Mediterranean coast at sunset, white foam and spray catching orange light, a small lighthouse in the distance, slow gentle camera push-in, realistic water physics, cinematic colour grading.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "video-caffe-macro",
+      "group": "Video",
+      "kind": "video",
+      "title_it": "Espresso versato, in macro",
+      "title_en": "Espresso pouring, macro",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "1:1",
+      "prompt": "Macro close-up of hot espresso pouring from a steel machine spout into a small white porcelain cup, rich crema forming and swirling, steam rising, warm café lights blurred in the background, slow motion, high detail, realistic liquid.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "video-verticale-piazza",
+      "group": "Video",
+      "kind": "video",
+      "title_it": "Verticale per i social: ballerina in piazza",
+      "title_en": "Vertical for social: dancer in a square",
+      "mode": "t2i",
+      "refs": 0,
+      "aspect": "9:16",
+      "prompt": "Vertical video: a young dancer in a flowing red dress spins in an empty Italian piazza at dawn, pigeons taking off around her, soft golden light on old stone buildings, the camera slowly circles her, graceful natural movement, realistic, cinematic.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "video-anima-ritratto",
+      "group": "Video",
+      "kind": "video",
+      "title_it": "Anima un ritratto: sorride e sbatte le palpebre",
+      "title_en": "Animate a portrait: smile and blink",
+      "mode": "edit",
+      "refs": 1,
+      "aspect": "3:4",
+      "prompt": "The person in the photo slowly smiles, blinks naturally and turns their head slightly toward the camera, hair moving gently, subtle breathing; the background, clothing and lighting stay exactly as in the photo. Realistic, calm, no camera movement.",
+      "source": "image-creator-free"
+    },
+    {
+      "id": "video-anima-paesaggio",
+      "group": "Video",
+      "kind": "video",
+      "title_it": "Anima un paesaggio: nuvole e acqua",
+      "title_en": "Animate a landscape: clouds and water",
+      "mode": "edit",
+      "refs": 1,
+      "aspect": "16:9",
+      "prompt": "Bring this landscape photo to life: clouds drift slowly across the sky, water ripples and reflects the light, leaves and grass sway in a light breeze, a very slow cinematic camera push-in. Keep the composition and colours of the photo; no new objects.",
+      "source": "image-creator-free"
+    },
+    {
       "id": "restauro-bn-piu-foto",
       "group": "Restauro foto",
       "title_it": "Restauro B/N con altre foto della persona",

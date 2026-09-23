@@ -65,6 +65,36 @@ originali. Ogni immagine conserva i parametri con cui è nata.
   tu non scelga di cancellarle.
 - *Tutte le immagini*, in cima all'elenco, mostra le ultime generate da qualunque progetto.
 
+## Video
+
+In *Parametri → Cosa* scegli **Video**. Il programma usa un secondo modello,
+[Wan2.2 TI2V-5B](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B-Diffusers) di Alibaba
+(licenza Apache-2.0, uso commerciale consentito): circa 34 GB, scaricati la prima
+volta che generi un video, nella stessa cartella del modello per le immagini.
+
+- **Da testo**: descrivi la scena e il movimento, come in una ripresa: chi fa cosa,
+  come si muove la camera, che luce c'è.
+- **Da una foto**: metti una sola immagine tra i riferimenti e descrivi cosa si
+  muove. Funziona bene per animare un ritratto restaurato o un paesaggio.
+- **Durata** da 1 a 5 secondi, a 24 fotogrammi al secondo. **Qualità** Bozza e
+  Standard a 480p, Alta a 704p (molto più lenta).
+- Il video finisce in MP4 nella cartella del progetto, con accanto un fotogramma PNG
+  che fa da copertina e porta i parametri. Doppio clic in galleria per guardarlo.
+
+Il modello per le immagini e quello per i video non stanno insieme in memoria:
+passando dall'uno all'altro il programma scarica il primo e carica il secondo.
+
+Tempi misurati su una RTX 4070 da 12 GB (Standard, 30 passi):
+
+| | |
+|---|---|
+| Caricamento del modello video | circa 1 minuto |
+| Lettura del prompt (sulla CPU, solo la prima volta per ogni prompt) | circa 1 minuto |
+| 5 secondi a 832x480 | 6 minuti e 46 secondi in tutto, 8,9 s per passo |
+
+Servono circa 10 GB di VRAM e 25 GB di memoria tra RAM e file di paging. Con meno
+VRAM il video funziona, ma molto più lentamente.
+
 ## Restaurare foto antiche
 
 Negli *Esempi*, gruppo *Restauro foto*. La prima immagine di riferimento è la foto da

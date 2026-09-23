@@ -36,6 +36,8 @@ TORCH_INDEX = {
 
 BASE_PACKAGES = [
     "PySide6>=6.7",          # la finestra gira con questo interprete
+    "imageio",               # salvataggio dei video in MP4
+    "imageio-ffmpeg",
     "transformers>=5.17",
     "accelerate>=1.0",
     "safetensors",
@@ -77,6 +79,22 @@ def is_ready() -> bool:
     # potrebbe partire con questo interprete.
     return (config.runtime_dir() / "Lib" / "site-packages" / "PySide6"
             / "__init__.py").exists()
+
+
+# Pacchetti arrivati dopo la prima versione: si installano quando servono,
+# senza rifare tutto l'ambiente. Nome pip -> cartella in site-packages.
+EXTRA_PACKAGES = {"imageio": "imageio", "imageio-ffmpeg": "imageio_ffmpeg"}
+
+
+def missing_packages() -> list[str]:
+    sito = config.runtime_dir() / "Lib" / "site-packages"
+    return [nome for nome, cartella in EXTRA_PACKAGES.items()
+            if not (sito / cartella).is_dir()]
+
+
+def pip_install_command(packages: list[str]) -> list[str]:
+    return [str(config.runtime_python()), "-m", "pip", "install", *packages,
+            "--no-warn-script-location", "--disable-pip-version-check"]
 
 
 def remember_location() -> None:

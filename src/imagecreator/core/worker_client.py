@@ -48,6 +48,7 @@ class WorkerClient(QObject):
         for key, value in self.settings.env_for_worker().items():
             env.insert(key, value)
         env.insert("ICF_MODEL_ID", self.settings.model_id)
+        env.insert("ICF_VIDEO_MODEL_ID", self.settings.video_model_id)
         proc.setProcessEnvironment(env)
         proc.setProgram(str(python))
         proc.setArguments(["-u", str(script)])

@@ -7,7 +7,7 @@
 <meta name="description" content="Applicazione Windows gratuita e open source per generare immagini in locale con Qwen-Image-2.1: testo dentro le immagini, trasparenze, progetti, restauro di foto antiche. Niente account, niente abbonamenti.">
 <link rel="canonical" href="https://imagecreator.bais.info/">
 <meta property="og:title" content="Image Creator Free">
-<meta property="og:description" content="Genera e restaura immagini con Qwen-Image-2.1 sul tuo computer. Windows, open source, senza account.">
+<meta property="og:description" content="Genera e restaura immagini con Qwen-Image-2.1 e crea brevi video con Wan2.2, sul tuo computer. Windows, open source, senza account.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://imagecreator.bais.info/">
 <meta property="og:image" content="https://imagecreator.bais.info/img/og.jpg">
@@ -126,6 +126,10 @@ ul.ticks li::before{content:"";position:absolute;left:0;top:.35em;width:16px;hei
 .before-after img{border-radius:14px;border:1px solid var(--border);aspect-ratio:3/4;object-fit:cover;width:100%}
 .before-after figcaption{font-size:.85rem;color:var(--muted);margin-top:8px}
 .before-after figcaption b{color:var(--fg)}
+.video-grid{grid-template-columns:1.6fr 1fr;align-items:start}
+.video-grid video{width:100%;height:auto;border-radius:14px;border:1px solid var(--border);
+  background:#000;display:block}
+@media (max-width:700px){ .video-grid{grid-template-columns:1fr} }
 
 /* funzioni */
 .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
@@ -167,6 +171,7 @@ footer a{color:var(--muted)}
       <a href="#galleria">Galleria</a>
       <a href="#progetti">Progetti</a>
       <a href="#restauro">Restauro</a>
+      <a href="#video">Video</a>
       <a href="#funzioni">Funzioni</a>
       <a href="#requisiti">Requisiti</a>
       <a class="cta" href="#scarica">Scarica</a>
@@ -181,7 +186,8 @@ footer a{color:var(--muted)}
         <div class="crumb"><a href="https://bais.info/">bais.info</a> / <a href="https://bais.info/local-ai/">Server e AI sul tuo computer</a></div>
         <h1>Immagini che nascono <span>sul tuo computer</span></h1>
         <p class="tagline">Image Creator Free porta Qwen-Image-2.1 su Windows: scrivi cosa vuoi
-          vedere, restaura una foto di famiglia, prova dieci varianti di un'idea. Niente
+          vedere, restaura una foto di famiglia e falla sorridere in un video, prova dieci varianti
+          di un'idea. Niente
           account, niente crediti, niente prompt che escono di casa.</p>
         <div class="actions">
           <a class="btn primary" href="https://github.com/bdbais/image-creator-free/releases/latest/download/ImageCreatorFree-Setup.exe">Scarica per Windows</a>
@@ -297,6 +303,27 @@ footer a{color:var(--muted)}
     </div>
   </section>
 
+  <section id="video">
+    <div class="wrap">
+      <span class="eyebrow">Video</span>
+      <h2>Cinque secondi che si muovono</h2>
+      <p class="lead">Clip fino a 5 secondi da una descrizione, oppure una foto che prende vita,
+        con il modello open source Wan2.2 (Apache-2.0). Gira sulla stessa scheda: su una
+        RTX 4070 da 12 GB, 5 secondi a 832x480 in meno di 7 minuti.</p>
+      <div class="before-after video-grid">
+        <figure><video src="video/cucciolo.mp4" poster="video/cucciolo.webp" controls muted loop playsinline preload="none" width="832" height="480"></video>
+          <figcaption><b>Da testo</b> — «un cucciolo di golden retriever corre in un prato fiorito
+            verso la camera». 5 s, 832x480, 30 passi: 6 min 46 s.</figcaption></figure>
+        <figure><video src="video/ritratto.mp4" poster="video/ritratto.webp" controls muted loop playsinline preload="none" width="544" height="736"></video>
+          <figcaption><b>Da una foto</b> — il ritratto restaurato e colorato qui sopra, con l'esempio
+            «Anima un ritratto». 3 s, 544x736: 4 min 15 s.</figcaption></figure>
+      </div>
+      <p class="note" style="margin-top:14px">Com'è uscito, senza ritocchi. Il volto animato resta
+        riconoscibile ma verso la fine si allontana un po' dall'originale: con le foto di
+        persone vere conviene tenere le clip corte.</p>
+    </div>
+  </section>
+
   <section id="funzioni">
     <div class="wrap">
       <span class="eyebrow">Funzioni</span>
@@ -315,6 +342,8 @@ footer a{color:var(--muted)}
              usato.</p></div>
         <div class="card"><div class="ico">▦</div><h3>Sette formati</h3>
           <p>Da 1:1 a 16:9 e 9:16, fino a 2048 pixel, con tre livelli di qualità.</p></div>
+        <div class="card"><div class="ico">▶</div><h3>Video</h3>
+          <p>Clip fino a 5 secondi da testo o da una foto, con Wan2.2. Tutto in locale.</p></div>
         <div class="card"><div class="ico">⟳</div><h3>Si aggiorna da solo</h3>
           <p>All'avvio controlla la versione, mostra le novità e installa l'aggiornamento,
              verificato con SHA-256.</p></div>
