@@ -502,7 +502,10 @@ class MainWindow(QMainWindow):
         self.kind_box.currentIndexChanged.connect(self._on_kind_changed)
 
         self.duration_spin = QDoubleSpinBox()
-        self.duration_spin.setRange(1.0, 5.0)
+        self.duration_spin.setRange(1.0, 20.0)
+        self.duration_spin.setToolTip(
+            "Oltre i 5 secondi il video si fa a segmenti da 5: ognuno riparte "
+            "dall'ultimo fotogramma del precedente.")
         self.duration_spin.setSingleStep(0.5)
         self.duration_spin.setDecimals(1)
         self.duration_spin.setSuffix(" s")
@@ -645,6 +648,13 @@ class MainWindow(QMainWindow):
             btn = QPushButton(label)
             btn.clicked.connect(slot)
             actions.addWidget(btn)
+        self.extend_btn = QPushButton("Allunga il video")
+        self.extend_btn.setToolTip(
+            "Continua il video selezionato dall'ultimo fotogramma, per la durata scelta nei "
+            "parametri, con il prompt che c'è ora nel campo.")
+        self.extend_btn.clicked.connect(self.extend_selected)
+        self.extend_btn.setVisible(False)
+        actions.addWidget(self.extend_btn)
         actions.addStretch(1)
         donate = QPushButton("Offri un caffè")
         donate.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(DONATE_URL)))
@@ -685,6 +695,20 @@ class MainWindow(QMainWindow):
         self.client.load_model()
 
     def generate(self):
+        self._generate()
+
+    def extend_selected(self):
+        """Allunga il video selezionato: stessa misura, riparte dall'ultimo fotogramma."""
+        entry = self._selected_entry()
+        if not entry or entry.get("meta", {}).get("kind") != "video":
+            return
+        if not self.prompt_edit.toPlainText().strip():
+            self.prompt_edit.setPlainText(entry.get("meta", {}).get("prompt", ""))
+        index = self.kind_box.findData("video")
+        self.kind_box.setCurrentIndex(index)
+        self._generate(extend_from=entry["path"])
+
+    def _generate(self, extend_from: str = ""):
         prompt = self.prompt_edit.toPlainText().strip()
         if not prompt:
             self.prompt_edit.setFocus()
@@ -700,7 +724,7 @@ class MainWindow(QMainWindow):
             # della 1.2: si installano adesso, poi si riparte da qui.
             mancanti = runtime.missing_packages()
             if mancanti:
-                self._install_packages(mancanti, then=self.generate)
+                self._install_packages(mancanti, then=lambda: self._generate(extend_from))
                 return
             if not self._conferma_download_video():
                 return
@@ -754,6 +778,7 @@ class MainWindow(QMainWindow):
             request.update(kind="video", batch=1, guidance_scale=5.0,
                            video_model=self.settings.video_model_id,
                            num_frames=config.video_frames(params["duration"]),
+                           extend_from=extend_from,
                            fps=config.VIDEO_FPS, images=refs[:1])
         self.job_project = self.project.id
         self.job_params = params
@@ -1074,6 +1099,7 @@ class MainWindow(QMainWindow):
             max(120, int(area.width() * 0.98)), max(120, int(area.height() * 0.98)),
             Qt.KeepAspectRatio, Qt.SmoothTransformation))
         meta = entry.get("meta", {})
+        self.extend_btn.setVisible(meta.get("kind") == "video")
         if meta.get("kind") == "video":
             self.meta_label.setText(
                 "▶ Video %s · %s s, %s fotogrammi · seed %s · %s passi · generato in %s s · "
@@ -1148,8 +1174,12 @@ class MainWindow(QMainWindow):
         if self._is_video():
             width, height = config.video_resolution(self.aspect_box.currentText(), quality)
             frames = config.video_frames(self.duration_spin.value())
-            self.size_label.setText("%d x %d px · %d fotogrammi a %d al secondo" % (
-                width, height, frames, config.VIDEO_FPS))
+            segmenti = config.video_segments(frames)
+            testo = "%d x %d px · %d fotogrammi a %d al secondo" % (
+                width, height, frames, config.VIDEO_FPS)
+            if segmenti > 1:
+                testo += " · %d segmenti da 5 s uniti" % segmenti
+            self.size_label.setText(testo)
             return
         width, height = config.resolution_for(self.aspect_box.currentText(), quality)
         self.size_label.setText("%d x %d px" % (width, height))

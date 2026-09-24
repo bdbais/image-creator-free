@@ -306,11 +306,15 @@ footer a{color:var(--muted)}
   <section id="video">
     <div class="wrap">
       <span class="eyebrow">Video</span>
-      <h2>Cinque secondi che si muovono</h2>
-      <p class="lead">Clip fino a 5 secondi da una descrizione, oppure una foto che prende vita,
-        con il modello open source Wan2.2 (Apache-2.0). Gira sulla stessa scheda: su una
-        RTX 4070 da 12 GB, 5 secondi a 832x480 in meno di 7 minuti.</p>
+      <h2>Video fino a 20 secondi</h2>
+      <p class="lead">Clip da una descrizione, oppure una foto che prende vita, con il modello
+        open source Wan2.2 (Apache-2.0). Il modello fa 5 secondi per volta: per andare oltre,
+        il programma continua dall'ultimo fotogramma e unisce i pezzi. Su una RTX 4070 da
+        12 GB: 5 secondi a 960x544 in circa 11 minuti, 10 secondi in 23.</p>
       <div class="before-after video-grid">
+        <figure style="grid-column:1/-1"><video src="video/onde.mp4" poster="video/onde.webp" controls muted loop playsinline preload="none" width="960" height="544"></video>
+          <figcaption><b>10 secondi, due segmenti uniti</b> — onde sugli scogli al tramonto, 960x544,
+            30 passi: 23 minuti. La giunzione è a metà: prova a trovarla.</figcaption></figure>
         <figure><video src="video/cucciolo.mp4" poster="video/cucciolo.webp" controls muted loop playsinline preload="none" width="832" height="480"></video>
           <figcaption><b>Da testo</b> — «un cucciolo di golden retriever corre in un prato fiorito
             verso la camera». 5 s, 832x480, 30 passi: 6 min 46 s.</figcaption></figure>
@@ -343,7 +347,7 @@ footer a{color:var(--muted)}
         <div class="card"><div class="ico">▦</div><h3>Sette formati</h3>
           <p>Da 1:1 a 16:9 e 9:16, fino a 2048 pixel, con tre livelli di qualità.</p></div>
         <div class="card"><div class="ico">▶</div><h3>Video</h3>
-          <p>Clip fino a 5 secondi da testo o da una foto, con Wan2.2. Tutto in locale.</p></div>
+          <p>Clip fino a 20 secondi da testo o da una foto, con Wan2.2. Tutto in locale.</p></div>
         <div class="card"><div class="ico">⟳</div><h3>Si aggiorna da solo</h3>
           <p>All'avvio controlla la versione, mostra le novità e installa l'aggiornamento,
              verificato con SHA-256.</p></div>

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0 - 2026-09-24
+
+- Video più lunghi: fino a 20 secondi. Oltre i 5 secondi il programma genera
+  segmenti da 5 che ripartono dall'ultimo fotogramma del precedente e li unisce;
+  la giunzione non si vede.
+- "Allunga il video": continua un video della galleria dall'ultimo fotogramma.
+- Qualità video più alta sulle schede da 12 GB: Standard e Alta a 960x544 (prima
+  832x480). Misurato su RTX 4070: 5 secondi in circa 11 minuti a 30 passi, 10
+  secondi in 23. Con 20 GB di VRAM o più, Alta usa la misura nativa 1280x704.
+
 ## 1.2.1 - 2026-09-23
 
 - Aggiornamento automatico: scaricato l'aggiornamento, l'installazione non

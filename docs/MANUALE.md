@@ -76,8 +76,15 @@ volta che generi un video, nella stessa cartella del modello per le immagini.
   come si muove la camera, che luce c'è.
 - **Da una foto**: metti una sola immagine tra i riferimenti e descrivi cosa si
   muove. Funziona bene per animare un ritratto restaurato o un paesaggio.
-- **Durata** da 1 a 5 secondi, a 24 fotogrammi al secondo. **Qualità** Bozza e
-  Standard a 480p, Alta a 704p (molto più lenta).
+- **Durata** da 1 a 20 secondi, a 24 fotogrammi al secondo. Il modello fa al massimo
+  5 secondi per volta: oltre, il programma genera segmenti da 5 che ripartono
+  dall'ultimo fotogramma del precedente e li unisce. La giunzione non si vede; il
+  movimento può cambiare un po' da un segmento all'altro.
+- **Allunga il video**: seleziona un video in galleria e premilo. Riparte
+  dall'ultimo fotogramma, per la durata scelta nei parametri, con il prompt che c'è
+  nel campo: puoi cambiarlo per dire cosa succede dopo.
+- **Qualità**: Bozza a 832x480 e 20 passi; Standard a 960x544 e 30 passi; Alta a
+  960x544 e 50 passi, oppure 1280x704 con almeno 20 GB di VRAM.
 - Il video finisce in MP4 nella cartella del progetto, con accanto un fotogramma PNG
   che fa da copertina e porta i parametri. Doppio clic in galleria per guardarlo.
 
@@ -90,7 +97,10 @@ Tempi misurati su una RTX 4070 da 12 GB (Standard, 30 passi):
 |---|---|
 | Caricamento del modello video | circa 1 minuto |
 | Lettura del prompt (sulla CPU, solo la prima volta per ogni prompt) | circa 1 minuto |
-| 5 secondi a 832x480 | 6 minuti e 46 secondi in tutto, 8,9 s per passo |
+| 5 secondi a 832x480, 30 passi (Bozza a 20 passi è più veloce) | 6 minuti e 46 secondi |
+| 5 secondi a 960x544, 30 passi (Standard) | circa 11 minuti, 16,5 s per passo |
+| 10 secondi a 960x544, 30 passi (due segmenti) | 23 minuti |
+| 5 secondi a 1280x704 | non praticabile: la VRAM trabocca e un passo dura 18 minuti |
 
 Servono circa 10 GB di VRAM e 25 GB di memoria tra RAM e file di paging. Con meno
 VRAM il video funziona, ma molto più lentamente.

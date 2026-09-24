@@ -20,6 +20,7 @@ from queue import Queue
 
 MODEL_ID = os.environ.get("ICF_MODEL_ID", "Qwen/Qwen-Image-2.1")
 VIDEO_MODEL_ID = os.environ.get("ICF_VIDEO_MODEL_ID", "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+VIDEO_MAX_FRAMES = 121          # 5 secondi a 24 fps: il massimo di Wan2.2 5B
 VIDEO_NEGATIVE = ("Bright tones, overexposed, static, blurred details, subtitles, worst "
                   "quality, low quality, deformed, disfigured, extra fingers, jpeg artifacts")
 
@@ -329,7 +330,27 @@ class Engine:
         dove = next(self.video_pipe.transformer.parameters()).device
         return positivo.to(dove), negativo.to(dove)
 
+    def _i2v_pipe(self):
+        from diffusers import WanImageToVideoPipeline
+
+        # Stessi pesi, altra pipeline: niente da ricaricare. La configurazione
+        # va ripresa: con expand_timesteps (Wan2.2 TI2V) la foto diventa il
+        # primo fotogramma latente; senza, la pipeline la prepara come Wan2.1
+        # e il transformer riceve 100 canali invece di 48.
+        base = self.video_pipe
+        return WanImageToVideoPipeline(
+            **base.components,
+            boundary_ratio=base.config.get("boundary_ratio"),
+            expand_timesteps=bool(base.config.get("expand_timesteps", False)))
+
     def generate_video(self, req):
+        """Una clip, o piu' segmenti uniti per superare i 5 secondi del modello.
+
+        Wan2.2 5B arriva a 121 fotogrammi. Oltre, ogni segmento parte
+        dall'ultimo fotogramma del precedente (foto->video) e si attacca in
+        coda: la giunzione non si vede, il movimento puo' cambiare un po'.
+        Con extend_from si riparte da un video esistente e lo si allunga.
+        """
         import random
 
         import torch
@@ -343,7 +364,7 @@ class Engine:
         # che lasciare che la pipeline arrotondi in silenzio.
         width = max(256, int(req.get("width", 832)) // 32 * 32)
         height = max(256, int(req.get("height", 480)) // 32 * 32)
-        frames = max(5, (int(req.get("num_frames", 73)) - 1) // 4 * 4 + 1)
+        totale = max(5, (int(req.get("num_frames", 73)) - 1) // 4 * 4 + 1)
         fps = int(req.get("fps", 24))
         seed = req.get("seed")
         run_seed = int(seed) if seed not in (None, "") else random.randint(0, 2 ** 32 - 1)
@@ -355,52 +376,77 @@ class Engine:
              msg="Leggo il prompt (sulla CPU, circa un minuto la prima volta)...")
         positivo, negativo = self._encode_video_prompt(
             req.get("prompt", ""), req.get("negative_prompt") or VIDEO_NEGATIVE)
-        kwargs = {
-            "prompt_embeds": positivo, "negative_prompt_embeds": negativo,
-            "height": height, "width": width, "num_frames": frames,
-            "num_inference_steps": steps,
-            "guidance_scale": float(req.get("guidance_scale", 5.0)),
-            "generator": torch.Generator("cpu").manual_seed(run_seed),
-            "callback_on_step_end": _make_callback(job, 0, 1, steps),
-        }
-        pipe = self.video_pipe
-        refs = [p for p in req.get("images", []) or [] if os.path.exists(p)]
-        if refs:
-            from diffusers import WanImageToVideoPipeline
+        guidance = float(req.get("guidance_scale", 5.0))
 
-            # Stessi pesi, altra pipeline: niente da ricaricare. La configurazione
-            # va ripresa: con expand_timesteps (Wan2.2 TI2V) la foto diventa il
-            # primo fotogramma latente; senza, la pipeline la prepara come Wan2.1
-            # e il transformer riceve 100 canali invece di 48.
-            base = self.video_pipe
-            pipe = WanImageToVideoPipeline(
-                **base.components,
-                boundary_ratio=base.config.get("boundary_ratio"),
-                expand_timesteps=bool(base.config.get("expand_timesteps", False)))
-            kwargs["image"] = _fit(Image.open(refs[0]).convert("RGB"), width, height)
+        # Da dove si parte: un video da allungare, una foto, o niente.
+        clip = []
+        partenza = None
+        estendi = req.get("extend_from") or ""
+        if estendi and os.path.exists(estendi):
+            import imageio.v3 as iio
+
+            clip = [Image.fromarray(f) for f in iio.imread(estendi)]
+            height, width = clip[0].height, clip[0].width
+            partenza = clip[-1]
+            totale += len(clip) - 1
+        else:
+            refs = [p for p in req.get("images", []) or [] if os.path.exists(p)]
+            if refs:
+                partenza = _fit(Image.open(refs[0]).convert("RGB"), width, height)
+
+        # Piano dei segmenti: ognuno al massimo 121 fotogrammi; dal secondo in poi
+        # il primo fotogramma ripete l'ultimo del precedente e si scarta.
+        segmenti = []
+        restano = totale - len(clip) if clip else totale
+        primo = not clip
+        while restano > (0 if primo else 1):
+            n = min(VIDEO_MAX_FRAMES, restano if primo else restano + 1)
+            n = max(17, (n - 1) // 4 * 4 + 1)
+            segmenti.append(n)
+            restano -= n if primo else n - 1
+            primo = False
+        passi_totali = steps * len(segmenti)
 
         started = time.time()
-        emit("progress", id=job, index=0, batch=1, step=0, total=steps,
-             msg="Video: %dx%d, %d fotogrammi" % (width, height, frames))
-        try:
-            result = pipe(**_filter_kwargs(pipe, kwargs))
-        except Cancelled:
-            emit("status", id=job, msg="Generazione annullata.", stage="cancelled")
-            _cancel.clear()
-            emit("done", id=job, cancelled=True)
-            return
-        except torch.cuda.OutOfMemoryError:
-            torch.cuda.empty_cache()
-            emit("error", id=job, kind="oom", msg=(
-                "VRAM esaurita durante il video. Riduci risoluzione o durata."))
-            emit("done", id=job, failed=True)
-            return
-        except Exception as exc:  # noqa: BLE001
-            emit("error", id=job, msg=str(exc), trace=traceback.format_exc())
-            emit("done", id=job, failed=True)
-            return
+        i2v = None
+        for indice, n in enumerate(segmenti):
+            emit("progress", id=job, index=0, batch=1, step=steps * indice, total=passi_totali,
+                 msg="Video: segmento %d di %d, %dx%d" % (indice + 1, len(segmenti),
+                                                          width, height))
+            kwargs = {
+                "prompt_embeds": positivo, "negative_prompt_embeds": negativo,
+                "height": height, "width": width, "num_frames": n,
+                "num_inference_steps": steps, "guidance_scale": guidance,
+                "generator": torch.Generator("cpu").manual_seed(run_seed + indice),
+                "callback_on_step_end": _make_callback(
+                    job, 0, 1, passi_totali, offset=steps * indice),
+            }
+            pipe = self.video_pipe
+            if partenza is not None:
+                i2v = i2v or self._i2v_pipe()
+                pipe = i2v
+                kwargs["image"] = partenza
+            try:
+                result = pipe(**_filter_kwargs(pipe, kwargs))
+            except Cancelled:
+                emit("status", id=job, msg="Generazione annullata.", stage="cancelled")
+                _cancel.clear()
+                emit("done", id=job, cancelled=True)
+                return
+            except torch.cuda.OutOfMemoryError:
+                torch.cuda.empty_cache()
+                emit("error", id=job, kind="oom", msg=(
+                    "VRAM esaurita durante il video. Riduci la risoluzione."))
+                emit("done", id=job, failed=True)
+                return
+            except Exception as exc:  # noqa: BLE001
+                emit("error", id=job, msg=str(exc), trace=traceback.format_exc())
+                emit("done", id=job, failed=True)
+                return
+            nuovi = [_to_pil(f) for f in result.frames[0]]
+            clip.extend(nuovi[1:] if clip else nuovi)
+            partenza = clip[-1]
 
-        clip = result.frames[0]
         path = os.path.join(out_dir, basename + ".mp4")
         from diffusers.utils import export_to_video
         export_to_video(clip, path, fps=fps)
@@ -409,17 +455,19 @@ class Engine:
             "prompt": req.get("prompt", ""),
             "negative_prompt": req.get("negative_prompt", ""),
             "seed": run_seed, "steps": steps,
-            "guidance_scale": kwargs["guidance_scale"],
+            "guidance_scale": guidance,
             "model": model_id,
             "size": "%dx%d" % (width, height),
             "frames": len(clip), "fps": fps,
             "seconds": round(len(clip) / float(fps), 1),
-            "references": len(refs),
+            "segments": len(segmenti),
+            "extended_from": estendi,
+            "references": 1 if partenza is not None and not estendi else 0,
             "created": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         # Il fotogramma centrale fa da copertina in galleria e porta i parametri.
         poster = os.path.join(out_dir, basename + ".png")
-        _save_png(_to_pil(clip[len(clip) // 2]), poster, meta)
+        _save_png(clip[len(clip) // 2], poster, meta)
         emit("image", id=job, index=0, path=path, poster=poster, seed=run_seed,
              elapsed=round(time.time() - started, 1), meta=meta)
         emit("done", id=job, cancelled=False)
@@ -487,11 +535,11 @@ def _filter_kwargs(pipe, kwargs):
     return dict((k, v) for k, v in kwargs.items() if k in params)
 
 
-def _make_callback(job, index, batch, total):
+def _make_callback(job, index, batch, total, offset=0):
     def callback(pipe, step, timestep, callback_kwargs):
         if _cancel.is_set():
             raise Cancelled()
-        emit("progress", id=job, index=index, batch=batch, step=step + 1, total=total)
+        emit("progress", id=job, index=index, batch=batch, step=offset + step + 1, total=total)
         return callback_kwargs
     return callback
 

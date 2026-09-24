@@ -1,6 +1,7 @@
 """Percorsi, impostazioni persistenti e rilevamento dell'ambiente."""
 from __future__ import annotations
 
+import functools
 import json
 import os
 import subprocess
@@ -173,13 +174,15 @@ def resolution_for(aspect: str, quality: str) -> tuple[int, int]:
     return (max(512, int(w * scale) // 64 * 64), max(512, int(h * scale) // 64 * 64))
 
 
-# Video con Wan2.2 TI2V-5B: 480p e 704p sono le misure della scheda del modello,
-# 24 fotogrammi al secondo. I passi sono meno dei 50 consigliati: su una scheda
-# da 12 GB ogni passo pesa, e la differenza di qualita' e' piccola.
+# Video con Wan2.2 TI2V-5B, misurato su una RTX 4070 da 12 GB (5 s, 121 fotogrammi):
+#   832x480   3,5-9 s per passo, picco 9,1 GB
+#   960x544   16,5 s per passo, picco 10,8 GB, decodifica 1,5 min
+#   1280x704  picco 13,3 GB: la VRAM trabocca e un passo dura 18 minuti.
+# La misura nativa del modello (1280x704) resta per le schede da 20 GB in su.
 VIDEO_QUALITY = {
     "draft": {"pixels": 832 * 480, "steps": 20},
-    "standard": {"pixels": 832 * 480, "steps": 30},
-    "high": {"pixels": 1280 * 704, "steps": 40},
+    "standard": {"pixels": 960 * 544, "steps": 30},
+    "high": {"pixels": 960 * 544, "pixels_big_gpu": 1280 * 704, "steps": 50},
 }
 VIDEO_FPS = 24
 
@@ -187,11 +190,24 @@ VIDEO_FPS = 24
 def video_resolution(aspect: str, quality: str) -> tuple[int, int]:
     """Stessa proporzione delle immagini, area fissata dalla qualita', lati multipli di 32."""
     w, h = ASPECT_RATIOS.get(aspect, ASPECT_RATIOS["16:9"])
-    area = VIDEO_QUALITY.get(quality, VIDEO_QUALITY["standard"])["pixels"]
+    scelta = VIDEO_QUALITY.get(quality, VIDEO_QUALITY["standard"])
+    area = scelta["pixels"]
+    if "pixels_big_gpu" in scelta and (detect_gpu().get("vram_gb") or 0) >= 20:
+        area = scelta["pixels_big_gpu"]
     ratio = w / h
     width = round((area * ratio) ** 0.5 / 32) * 32
     height = round((area / ratio) ** 0.5 / 32) * 32
     return max(256, width), max(256, height)
+
+
+VIDEO_MAX_FRAMES = 121   # il massimo di Wan2.2 5B in una sola passata (5 s)
+
+
+def video_segments(frames: int) -> int:
+    """Quante passate servono: dalla seconda, il primo fotogramma ripete il precedente."""
+    if frames <= VIDEO_MAX_FRAMES:
+        return 1
+    return 1 + -(-(frames - VIDEO_MAX_FRAMES) // (VIDEO_MAX_FRAMES - 1))
 
 
 def video_frames(seconds: float) -> int:
@@ -274,8 +290,13 @@ class Settings:
         return env
 
 
+@functools.lru_cache(maxsize=1)
 def detect_gpu() -> dict:
-    """VRAM e nome GPU via nvidia-smi: serve prima che il runtime esista."""
+    """VRAM e nome GPU via nvidia-smi: serve prima che il runtime esista.
+
+    Il risultato resta in memoria: la scheda non cambia mentre il programma gira,
+    e nvidia-smi costa un decimo di secondo a ogni chiamata.
+    """
     info = {"name": "", "vram_gb": 0.0, "nvidia": False}
     try:
         out = subprocess.run(
