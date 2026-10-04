@@ -41,7 +41,11 @@ Il PNG salvato mantiene la trasparenza.
 
 ## Modificare le proprie immagini
 
-Nella scheda *Immagini di riferimento* trascina da una a dieci immagini, poi
+Nella scheda *Immagini di riferimento* trascina da una a dieci immagini, oppure
+incollale con **Ctrl+V**: uno screenshot, un'immagine copiata dal browser o dei file
+copiati in Esplora risorse (Ctrl+V funziona ovunque nella finestra, tranne nei campi
+di testo, dove incolla testo). Dalla galleria, Ctrl+C copia un'immagine e il tasto
+destro offre *Usa come riferimento*. Poi
 citale nel prompt nell'ordine in cui le hai messe: *image 1*, *image 2*...
 Funziona per cambiare uno sfondo, montare una foto di gruppo da più ritratti,
 arredare una stanza con oggetti fotografati da te. Quando ci sono riferimenti, il

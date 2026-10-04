@@ -10,10 +10,11 @@ from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt, QTimer, QUrl
 from PySide6.QtGui import (
-    QAction, QDesktopServices, QGuiApplication, QIcon, QImageReader, QPainter, QPixmap,
+    QAction, QDesktopServices, QGuiApplication, QIcon, QImageReader, QKeySequence, QPainter,
+    QPixmap, QShortcut,
 )
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout, QInputDialog,
+    QCheckBox, QComboBox, QDoubleSpinBox, QFrame, QHBoxLayout, QInputDialog, QMenu,
     QLabel, QLineEdit, QListWidget, QListWidgetItem, QMainWindow, QMessageBox,
     QPlainTextEdit, QProgressBar, QPushButton, QSpinBox, QSplitter, QTabWidget,
     QVBoxLayout, QWidget,
@@ -23,7 +24,7 @@ from .. import APP_NAME
 from ..core import config, history, presets as presets_mod, projects, runtime
 from ..core.worker_client import WorkerClient
 from . import aggiornamento
-from .refs import ReferenceStrip
+from .refs import ReferenceStrip, clipboard_image_paths, copy_image_to_clipboard
 from .settings_dialog import SettingsDialog
 from .setup_dialog import SetupDialog
 
@@ -63,6 +64,11 @@ class MainWindow(QMainWindow):
         self._update_generate_state()
         # Controllo della versione poco dopo l'avvio, senza bloccare la finestra.
         QTimer.singleShot(4000, self._check_update)
+
+        # Ctrl+V fuori dai campi di testo: un'immagine negli appunti diventa un
+        # riferimento. Nei campi di testo vince il loro incolla (ShortcutOverride).
+        incolla = QShortcut(QKeySequence.Paste, self)
+        incolla.activated.connect(self.paste_reference)
 
     # =================================================================== interfaccia
     def _build_menu(self):
@@ -636,6 +642,11 @@ class MainWindow(QMainWindow):
         self.gallery.setWrapping(False)
         self.gallery.setMovement(QListWidget.Static)
         self.gallery.itemSelectionChanged.connect(self._show_selected_image)
+        self.gallery.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.gallery.customContextMenuRequested.connect(self._gallery_menu)
+        copia = QShortcut(QKeySequence.Copy, self.gallery)
+        copia.setContext(Qt.WidgetShortcut)
+        copia.activated.connect(self.copy_selected_image)
         self.gallery.itemDoubleClicked.connect(
             lambda item: self._open_entry(item.data(Qt.UserRole)))
         box.addWidget(self.gallery)
@@ -1244,6 +1255,51 @@ class MainWindow(QMainWindow):
                 "È disponibile la versione %s: Aiuto → Informazioni e novità." % info["version"])
             return
         aggiornamento.proponi(self, info)
+
+    # ---------------------------------------------------------------- appunti
+    def paste_reference(self):
+        """Incolla dagli appunti tra le immagini di riferimento e mostra la scheda."""
+        if not clipboard_image_paths():
+            self.status_label.setText("Negli appunti non c'è un'immagine da incollare.")
+            return
+        aggiunte = self.refs.paste_from_clipboard()
+        if aggiunte:
+            self.tabs.setCurrentIndex(1)
+            self.status_label.setText(
+                "Incollata come riferimento: %d immagine%s." % (aggiunte, "" if aggiunte == 1 else "i"))
+        else:
+            self.status_label.setText("Riferimenti al completo (10) o immagine già presente.")
+
+    def copy_selected_image(self):
+        entry = self._selected_entry()
+        if not entry:
+            return
+        if copy_image_to_clipboard(entry.get("poster") or entry["path"]):
+            self.status_label.setText("Immagine copiata negli appunti.")
+
+    def use_selected_as_reference(self):
+        entry = self._selected_entry()
+        if not entry:
+            return
+        prima = self.refs.count()
+        self.refs.add_paths([entry.get("poster") or entry["path"]])
+        if self.refs.count() > prima:
+            self.tabs.setCurrentIndex(1)
+            self.status_label.setText("Aggiunta alle immagini di riferimento.")
+
+    def _gallery_menu(self, pos):
+        item = self.gallery.itemAt(pos)
+        if item is None:
+            return
+        self.gallery.setCurrentItem(item)
+        menu = QMenu(self)
+        menu.addAction("Copia l'immagine", self.copy_selected_image)
+        menu.addAction("Usa come riferimento", self.use_selected_as_reference)
+        menu.addSeparator()
+        menu.addAction("Apri", lambda: self._open_entry(item.data(Qt.UserRole)))
+        menu.addAction("Mostra nella cartella",
+                       lambda: self._open_path(Path(item.data(Qt.UserRole)["path"])))
+        menu.exec(self.gallery.viewport().mapToGlobal(pos))
 
     def _open_entry(self, entry: dict):
         """Doppio clic in galleria: i video si guardano, le immagini si mostrano nella cartella."""

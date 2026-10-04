@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.1 - 2026-10-04
+
+- Copia e incolla delle immagini di riferimento: Ctrl+V (o il pulsante Incolla)
+  aggiunge uno screenshot, un'immagine copiata dal browser o dei file copiati in
+  Esplora risorse. Nel campo del prompt Ctrl+V resta un incolla di testo.
+- In galleria: Ctrl+C copia l'immagine; con il tasto destro anche "Usa come
+  riferimento", "Apri" e "Mostra nella cartella".
+
 ## 1.3.0 - 2026-09-24
 
 - Video più lunghi: fino a 20 secondi. Oltre i 5 secondi il programma genera
